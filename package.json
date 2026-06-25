@@ -1,0 +1,36 @@
+{
+  "name": "weather-pro",
+  "version": "0.1.0",
+  "description": "开源出门天气助手，基于和风天气 API，支持分钟级降雨、天气预警、生活指数和场景化出门建议。",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently \"npm:dev:api\" \"npm:dev:web\"",
+    "dev:mock": "QWEATHER_MOCK=true npm run dev",
+    "dev:api": "node server/index.js",
+    "dev:web": "vite --host 0.0.0.0",
+    "build": "vite build",
+    "preview": "vite preview --host 0.0.0.0",
+    "start": "NODE_ENV=production node server/index.js"
+  },
+  "keywords": [
+    "weather",
+    "qweather",
+    "react",
+    "vite",
+    "express",
+    "weather-app",
+    "pwa",
+    "open-source"
+  ],
+  "dependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
+    "concurrently": "^9.1.2",
+    "express": "^4.21.2",
+    "lucide-react": "^0.468.0",
+    "vite": "^6.0.5",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {}
+}
