@@ -2,64 +2,115 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createLatestWeatherLoader } from "./weather-loader.js";
 
-test("stale success cannot overwrite the latest request", async () => {
-  const first = deferred();
-  const second = deferred();
+test("buffers details until matching core succeeds", async () => {
+  const core = deferred();
+  const details = deferred();
   const events = [];
-  const loader = createLatestWeatherLoader(queueFetch(first.promise, second.promise));
+  const loader = createLatestWeatherLoader(routeFetch({ b: { core, details } }));
+  const load = loader.load(target("b"), callbacks("b", events));
 
-  const firstLoad = loader.load(target("a"), callbacks("a", events));
-  const secondLoad = loader.load(target("b"), callbacks("b", events));
-  second.resolve(response({ city: "b" }));
-  await secondLoad;
-  first.resolve(response({ city: "a" }));
-  await firstLoad;
+  details.resolve(response({ location: "b", minutely: { minutely: [] } }));
+  await tick();
+  assert.deepEqual(events, ["b:loading"]);
 
-  assert.deepEqual(events, ["a:loading", "b:loading", "b:success:b", "b:settled"]);
-});
-
-test("stale rejection cannot set error or finish the latest request", async () => {
-  const first = deferred();
-  const second = deferred();
-  const events = [];
-  const loader = createLatestWeatherLoader(queueFetch(first.promise, second.promise));
-
-  const firstLoad = loader.load(target("a"), callbacks("a", events));
-  const secondLoad = loader.load(target("b"), callbacks("b", events));
-  first.reject(new Error("old failure"));
-  await firstLoad;
-  second.resolve(response({ city: "b" }));
-  await secondLoad;
-
-  assert.deepEqual(events, ["a:loading", "b:loading", "b:success:b", "b:settled"]);
-});
-
-test("AbortError is silent and does not settle stale UI", async () => {
-  const pending = deferred();
-  const events = [];
-  const loader = createLatestWeatherLoader(queueFetch(pending.promise));
-  const load = loader.load(target("a"), callbacks("a", events));
-  const error = new Error("aborted");
-  error.name = "AbortError";
-  pending.reject(error);
+  core.resolve(response({ location: "b", now: { now: {} } }));
   await load;
-  assert.deepEqual(events, ["a:loading"]);
+  assert.deepEqual(events, ["b:loading", "b:core:b", "b:core-settled", "b:details:b", "b:details-settled"]);
 });
 
-test("latest HTTP failure reports error and settles", async () => {
+test("details failure is local after core success", async () => {
   const events = [];
-  const loader = createLatestWeatherLoader(async () => response({ error: "天气坏了" }, false));
+  const loader = createLatestWeatherLoader(async (url) => {
+    if (url.includes("/details")) {
+      return response({ error: { code: "WEATHER_DETAILS_UNAVAILABLE", message: "详情暂不可用" } }, false);
+    }
+    return response({ location: "a", now: { now: {} } });
+  });
+
   await loader.load(target("a"), callbacks("a", events));
-  assert.deepEqual(events, ["a:loading", "a:error:天气坏了", "a:settled"]);
+  assert.deepEqual(events, [
+    "a:loading",
+    "a:core:a",
+    "a:core-settled",
+    "a:details-error:详情暂不可用",
+    "a:details-settled"
+  ]);
 });
 
-test("cancel prevents every later write from the active request", async () => {
-  const pending = deferred();
+test("a new city's details never merge with the previous city's core", async () => {
+  const bCore = deferred();
+  const bDetails = deferred();
   const events = [];
-  const loader = createLatestWeatherLoader(queueFetch(pending.promise));
+  const loader = createLatestWeatherLoader(routeFetch({
+    a: {
+      core: resolved(response({ location: "a", now: { now: {} } })),
+      details: resolved(response({ location: "a", minutely: { minutely: [] } }))
+    },
+    b: { core: bCore, details: bDetails }
+  }));
+
+  await loader.load(target("a"), callbacks("a", events));
+  const bLoad = loader.load(target("b"), callbacks("b", events));
+  bDetails.resolve(response({ location: "b", minutely: { minutely: [] } }));
+  await tick();
+  assert.deepEqual(events.slice(-1), ["b:loading"]);
+
+  bCore.resolve(response({ location: "b", now: { now: {} } }));
+  await bLoad;
+  assert.deepEqual(events.slice(-4), ["b:core:b", "b:core-settled", "b:details:b", "b:details-settled"]);
+});
+
+test("stale core, details, errors, and finally callbacks cannot write", async () => {
+  const aCore = deferred();
+  const aDetails = deferred();
+  const events = [];
+  const loader = createLatestWeatherLoader(routeFetch({
+    a: { core: aCore, details: aDetails },
+    b: {
+      core: resolved(response({ location: "b" })),
+      details: resolved(response({ location: "b" }))
+    }
+  }));
+
+  const aLoad = loader.load(target("a"), callbacks("a", events));
+  await loader.load(target("b"), callbacks("b", events));
+  aCore.resolve(response({ location: "a" }));
+  aDetails.reject(new Error("old failure"));
+  await aLoad;
+
+  assert.deepEqual(events, [
+    "a:loading",
+    "b:loading",
+    "b:core:b",
+    "b:core-settled",
+    "b:details:b",
+    "b:details-settled"
+  ]);
+});
+
+test("core failure suppresses already buffered details", async () => {
+  const core = deferred();
+  const details = deferred();
+  const events = [];
+  const loader = createLatestWeatherLoader(routeFetch({ a: { core, details } }));
+  const load = loader.load(target("a"), callbacks("a", events));
+  details.resolve(response({ location: "a" }));
+  await tick();
+  core.resolve(response({ error: { message: "核心天气失败" } }, false));
+  await load;
+
+  assert.deepEqual(events, ["a:loading", "a:core-error:核心天气失败", "a:core-settled"]);
+});
+
+test("cancel prevents every later callback", async () => {
+  const core = deferred();
+  const details = deferred();
+  const events = [];
+  const loader = createLatestWeatherLoader(routeFetch({ a: { core, details } }));
   const load = loader.load(target("a"), callbacks("a", events));
   loader.cancel();
-  pending.resolve(response({ city: "a" }));
+  core.resolve(response({ location: "a" }));
+  details.resolve(response({ location: "a" }));
   await load;
   assert.deepEqual(events, ["a:loading"]);
 });
@@ -67,9 +118,21 @@ test("cancel prevents every later write from the active request", async () => {
 function callbacks(label, events) {
   return {
     onLoading: () => events.push(`${label}:loading`),
-    onSuccess: (data) => events.push(`${label}:success:${data.city}`),
-    onError: (error) => events.push(`${label}:error:${error.message}`),
-    onSettled: () => events.push(`${label}:settled`)
+    onCoreSuccess: (data) => events.push(`${label}:core:${data.location}`),
+    onCoreError: (error) => events.push(`${label}:core-error:${error.message}`),
+    onCoreSettled: () => events.push(`${label}:core-settled`),
+    onDetailsSuccess: (data) => events.push(`${label}:details:${data.location}`),
+    onDetailsError: (error) => events.push(`${label}:details-error:${error.message}`),
+    onDetailsSettled: () => events.push(`${label}:details-settled`)
+  };
+}
+
+function routeFetch(routes) {
+  return (url) => {
+    const parsed = new URL(url, "http://weather.test");
+    const id = parsed.searchParams.get("location");
+    const phase = parsed.pathname.endsWith("/details") ? "details" : "core";
+    return routes[id][phase].promise;
   };
 }
 
@@ -81,9 +144,8 @@ function response(data, ok = true) {
   return { ok, json: async () => data };
 }
 
-function queueFetch(...promises) {
-  let index = 0;
-  return () => promises[index++];
+function resolved(value) {
+  return { promise: Promise.resolve(value) };
 }
 
 function deferred() {
@@ -94,4 +156,8 @@ function deferred() {
     reject = rej;
   });
   return { promise, resolve, reject };
+}
+
+function tick() {
+  return new Promise((resolve) => setImmediate(resolve));
 }
