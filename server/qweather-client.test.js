@@ -186,6 +186,31 @@ test("flushes the latest cache version when data changes during a write", async 
   assert.deepEqual(disk.entries.map((entry) => entry.data.marker).sort(), ["101010100", "101200204"]);
 });
 
+test("disables persistence after a write failure without blocking close", async () => {
+  let writeAttempts = 0;
+  const fsImpl = {
+    readFile: async () => { throw Object.assign(new Error("missing"), { code: "ENOENT" }); },
+    mkdir: async () => {},
+    writeFile: async () => {
+      writeAttempts += 1;
+      if (writeAttempts === 1) throw Object.assign(new Error("readonly"), { code: "EACCES" });
+    },
+    rename: async () => {},
+    rm: async () => {}
+  };
+  const client = createQWeatherClient({
+    apiKey: "secret",
+    cachePath: "/readonly/qweather.json",
+    persistDelayMs: 0,
+    fsImpl,
+    fetchImpl: async () => jsonResponse({ code: "200" })
+  });
+
+  await client.request(spec);
+  await client.close();
+  assert.equal(writeAttempts, 1);
+});
+
 async function temporaryCache(t) {
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), "weather-pro-cache-"));
   t.after(() => fs.rm(directory, { recursive: true, force: true }));

@@ -31,6 +31,7 @@ export function createQWeatherClient(options = {}) {
   let persistedVersion = 0;
   let persistTimer = null;
   let writePromise = null;
+  let persistenceDisabled = false;
 
   const ready = restoreDiskCache();
 
@@ -104,7 +105,7 @@ export function createQWeatherClient(options = {}) {
   }
 
   function schedulePersist() {
-    if (persistTimer !== null || writePromise) return;
+    if (persistenceDisabled || persistTimer !== null || writePromise) return;
     persistTimer = setTimeoutImpl(() => {
       persistTimer = null;
       ensureFlush().catch(() => {});
@@ -112,6 +113,10 @@ export function createQWeatherClient(options = {}) {
   }
 
   function ensureFlush() {
+    if (persistenceDisabled) {
+      persistedVersion = version;
+      return Promise.resolve();
+    }
     if (writePromise) return writePromise;
     writePromise = (async () => {
       while (persistedVersion < version) {
@@ -122,10 +127,13 @@ export function createQWeatherClient(options = {}) {
         persistedVersion = targetVersion;
       }
     })()
-      .catch(() => {})
+      .catch(() => {
+        persistenceDisabled = true;
+        persistedVersion = version;
+      })
       .finally(() => {
         writePromise = null;
-        if (persistedVersion < version) schedulePersist();
+        if (!persistenceDisabled && persistedVersion < version) schedulePersist();
       });
     return writePromise;
   }
