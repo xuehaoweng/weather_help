@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { resolveWeatherScene } from "./weather-effects.js";
+import { mockLocations, mockWeatherPayload } from "../server/mock-data.js";
 
 const expectedIcons = {
   clear: [100, 150],
@@ -151,6 +152,46 @@ test("cloud atmosphere and dust durations follow bounded wind formulas", () => {
   close(dust.dustOffsetX, 280);
   assert.equal(resolveWeatherScene({ icon: "503", windSpeed: "0" }, "success").dustCount, 0);
   assert.equal(resolveWeatherScene({ icon: "503", wind360: "270", windSpeed: "50" }, "success", { compact: true }).dustCount, 18);
+});
+
+test("Mock cities expose every primary scene with deterministic fields", () => {
+  const fixtures = [
+    ["北京", "101010100", "100", "0", "0", "0.0", "10", "clear"],
+    ["海淀", "101010200", "101", "90", "18", "0.0", "72", "cloudy"],
+    ["杭州", "101210101", "104", "180", "12", "0.0", "95", "overcast"],
+    ["上海", "101020100", "306", "90", "28", "2.4", "94", "rain"],
+    ["深圳", "101280601", "302", "135", "32", "3.2", "100", "thunder"],
+    ["哈尔滨", "101050101", "400", "315", "16", "1.2", "88", "snow"],
+    ["重庆", "101040100", "501", "0", "4", "0.0", "100", "fog"],
+    ["石家庄", "101090101", "502", "270", "14", "0.0", "95", "haze"],
+    ["兰州", "101160101", "503", "270", "35", "0.0", "65", "dust"]
+  ];
+
+  for (const [name, id, icon, wind360, windSpeed, precip, cloud, kind] of fixtures) {
+    assert.ok(mockLocations.some((location) => location.id === id && location.name === name), `${name} is searchable`);
+    const payload = mockWeatherPayload(id);
+    const now = payload.now.now;
+    assert.deepEqual(
+      [now.icon, now.wind360, now.windSpeed, now.precip, now.cloud],
+      [icon, wind360, windSpeed, precip, cloud],
+      name
+    );
+    assert.equal(resolveWeatherScene(now, "success").kind, kind, name);
+    assert.equal(payload.hourly.hourly[0].icon, icon, `${name} hourly icon`);
+  }
+});
+
+test("Mock precipitation timelines match current precipitation type", () => {
+  const cases = [
+    ["101020100", "rain"],
+    ["101280601", "rain"],
+    ["101050101", "snow"]
+  ];
+  for (const [id, type] of cases) {
+    const payload = mockWeatherPayload(id);
+    assert.ok(payload.minutely.minutely.some((slot) => Number(slot.precip) > 0), id);
+    assert.ok(payload.minutely.minutely.every((slot) => slot.type === type), `${id}/${type}`);
+  }
 });
 
 function rain(overrides = {}) {

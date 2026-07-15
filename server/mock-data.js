@@ -5,10 +5,28 @@ export const mockLocations = [
   city("海淀", "haidian", "101010200", "39.95607", "116.31032", "北京", "北京市", 15),
   city("上海", "shanghai", "101020100", "31.23037", "121.47370", "上海", "上海市", 10),
   city("杭州", "hangzhou", "101210101", "30.27415", "120.15515", "杭州", "浙江省", 13),
-  city("深圳", "shenzhen", "101280601", "22.54286", "114.05956", "深圳", "广东省", 13)
+  city("深圳", "shenzhen", "101280601", "22.54286", "114.05956", "深圳", "广东省", 13),
+  city("哈尔滨", "haerbin", "101050101", "45.80378", "126.53497", "哈尔滨", "黑龙江省", 12),
+  city("重庆", "chongqing", "101040100", "29.56301", "106.55156", "重庆", "重庆市", 10),
+  city("石家庄", "shijiazhuang", "101090101", "38.04276", "114.51430", "石家庄", "河北省", 12),
+  city("兰州", "lanzhou", "101160101", "36.06138", "103.83417", "兰州", "甘肃省", 12)
 ];
 
+const weatherScenarios = {
+  "101010100": scenario("100", "晴", "0", "北风", "0", "0.0", "10", "rain"),
+  "101010200": scenario("101", "多云", "90", "东风", "18", "0.0", "72", "rain"),
+  "101210101": scenario("104", "阴", "180", "南风", "12", "0.0", "95", "rain"),
+  "101020100": scenario("306", "中雨", "90", "东风", "28", "2.4", "94", "rain"),
+  "101280601": scenario("302", "雷阵雨", "135", "东南风", "32", "3.2", "100", "rain"),
+  "101050101": scenario("400", "小雪", "315", "西北风", "16", "1.2", "88", "snow"),
+  "101040100": scenario("501", "雾", "0", "北风", "4", "0.0", "100", "rain"),
+  "101090101": scenario("502", "霾", "270", "西风", "14", "0.0", "95", "rain"),
+  "101160101": scenario("503", "扬沙", "270", "西风", "35", "0.0", "65", "rain")
+};
+
 export function mockWeatherPayload(location = "101010100", point = "116.41,39.90") {
+  const current = weatherScenarios[location] || weatherScenarios["101010100"];
+  const hasPrecipitation = Number(current.precip) > 0;
   return {
     location,
     point,
@@ -19,12 +37,15 @@ export function mockWeatherPayload(location = "101010100", point = "116.41,39.90
         obsTime: `${baseDate}T10:36+08:00`,
         temp: "27",
         feelsLike: "24",
-        text: "晴",
-        windDir: "北风",
-        windScale: "4",
-        windSpeed: "24",
+        icon: current.icon,
+        text: current.text,
+        wind360: current.wind360,
+        windDir: current.windDir,
+        windScale: current.windSpeed === "0" ? "0" : "1-3",
+        windSpeed: current.windSpeed,
         humidity: "35",
-        precip: "0.0",
+        precip: current.precip,
+        cloud: current.cloud,
         pressure: "1006",
         vis: "30"
       },
@@ -48,12 +69,15 @@ export function mockWeatherPayload(location = "101010100", point = "116.41,39.90
       hourly: Array.from({ length: 24 }, (_, index) => ({
         fxTime: `2026-06-${index < 13 ? "25" : "26"}T${String((11 + index) % 24).padStart(2, "0")}:00+08:00`,
         temp: String(index < 7 ? 28 + Math.floor(index / 2) : 24 + Math.max(0, 5 - Math.floor(index / 3))),
-        text: index < 10 ? "晴" : "多云",
-        windDir: "东南风",
+        icon: current.icon,
+        text: current.text,
+        wind360: current.wind360,
+        windDir: current.windDir,
         windScale: "1-3",
-        windSpeed: index < 6 ? "10" : "7",
+        windSpeed: current.windSpeed,
         humidity: String(38 + index),
-        precip: index === 17 ? "0.2" : "0.0"
+        precip: hasPrecipitation && index < 4 ? current.precip : "0.0",
+        cloud: current.cloud
       })),
       refer: mockRefer()
     },
@@ -64,11 +88,11 @@ export function mockWeatherPayload(location = "101010100", point = "116.41,39.90
     },
     minutely: {
       code: "200",
-      summary: "未来两小时无降水",
+      summary: hasPrecipitation ? `未来两小时有${current.text}` : "未来两小时无降水",
       minutely: Array.from({ length: 24 }, (_, index) => ({
         fxTime: `2026-06-25T${String(10 + Math.floor((55 + index * 5) / 60)).padStart(2, "0")}:${String((55 + index * 5) % 60).padStart(2, "0")}+08:00`,
-        precip: "0.00",
-        type: "rain"
+        precip: hasPrecipitation ? String(Math.max(0.05, Number(current.precip) / 6).toFixed(2)) : "0.00",
+        type: current.precipType
       })),
       refer: mockRefer()
     },
@@ -88,6 +112,10 @@ export function mockWeatherPayload(location = "101010100", point = "116.41,39.90
     },
     errors: []
   };
+}
+
+function scenario(icon, text, wind360, windDir, windSpeed, precip, cloud, precipType) {
+  return { icon, text, wind360, windDir, windSpeed, precip, cloud, precipType };
 }
 
 export function matchesMockLocation(item, query) {
