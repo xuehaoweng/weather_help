@@ -1,50 +1,95 @@
 export function createLatestWeatherLoader(fetchImpl = fetch) {
-  let currentId = 0;
+  let currentGeneration = 0;
   let activeController = null;
 
   async function load(target, callbacks = {}) {
-    const requestId = ++currentId;
+    const generation = ++currentGeneration;
     activeController?.abort();
     const controller = new AbortController();
     activeController = controller;
-    let ignored = false;
+    const locationKey = buildLocationKey(target);
+    let coreStatus = "pending";
+    let detailsOutcome = null;
+    let detailsDelivered = false;
 
+    const isCurrent = () => generation === currentGeneration && locationKey === buildLocationKey(target);
     callbacks.onLoading?.();
 
-    try {
-      const params = new URLSearchParams({
-        location: target.id,
-        lon: target.lon,
-        lat: target.lat
-      });
-      const response = await fetchImpl(`/api/weather?${params}`, { signal: controller.signal });
-      const data = await response.json();
+    const params = new URLSearchParams({
+      location: target.id,
+      lon: target.lon,
+      lat: target.lat
+    });
 
-      if (requestId !== currentId) {
-        ignored = true;
-        return;
-      }
-      if (!response.ok) throw new Error(data.error || "天气数据加载失败");
-      callbacks.onSuccess?.(data);
-    } catch (error) {
-      if (requestId !== currentId || error?.name === "AbortError") {
-        ignored = true;
-        return;
-      }
-      callbacks.onError?.(error);
-    } finally {
-      if (!ignored && requestId === currentId) callbacks.onSettled?.();
+    function deliverDetails() {
+      if (!isCurrent() || coreStatus !== "success" || !detailsOutcome || detailsDelivered) return;
+      detailsDelivered = true;
+      if (detailsOutcome.ok) callbacks.onDetailsSuccess?.(detailsOutcome.data);
+      else callbacks.onDetailsError?.(detailsOutcome.error);
+      callbacks.onDetailsSettled?.();
     }
+
+    const coreTask = requestJson(`/api/weather?${params}`, controller.signal)
+      .then((data) => {
+        if (!isCurrent()) return;
+        coreStatus = "success";
+        callbacks.onCoreSuccess?.(data);
+        callbacks.onCoreSettled?.();
+        deliverDetails();
+      })
+      .catch((error) => {
+        if (!isCurrent() || error?.name === "AbortError") return;
+        coreStatus = "error";
+        callbacks.onCoreError?.(error);
+        callbacks.onCoreSettled?.();
+      });
+
+    const detailsTask = requestJson(`/api/weather/details?${params}`, controller.signal)
+      .then((data) => {
+        if (!isCurrent()) return;
+        detailsOutcome = { ok: true, data };
+        deliverDetails();
+      })
+      .catch((error) => {
+        if (!isCurrent() || error?.name === "AbortError") return;
+        detailsOutcome = { ok: false, error };
+        deliverDetails();
+      });
+
+    await Promise.allSettled([coreTask, detailsTask]);
+  }
+
+  async function requestJson(url, signal) {
+    const response = await fetchImpl(url, { signal });
+    const data = await response.json();
+    if (!response.ok) throw new Error(readErrorMessage(data));
+    return data;
   }
 
   function cancel() {
-    currentId += 1;
+    currentGeneration += 1;
     activeController?.abort();
     activeController = null;
   }
 
+  return { load, cancel };
+}
+
+export function mergeWeatherData(core, details) {
   return {
-    load,
-    cancel
+    ...core,
+    minutely: details.minutely,
+    indices: details.indices,
+    insight: { ...core?.insight, ...details?.insight },
+    errors: [...(core?.errors || []), ...(details?.errors || [])]
   };
+}
+
+function buildLocationKey(target) {
+  return `${String(target.id)}|${String(target.lon)}|${String(target.lat)}`;
+}
+
+function readErrorMessage(data) {
+  if (typeof data?.error === "string") return data.error;
+  return data?.error?.message || "天气数据加载失败";
 }

@@ -24,7 +24,7 @@ import {
 } from "lucide-react";
 import { WeatherEffects } from "./WeatherEffects.jsx";
 import { resolveWeatherScene } from "./weather-effects.js";
-import { createLatestWeatherLoader } from "./weather-loader.js";
+import { createLatestWeatherLoader, mergeWeatherData } from "./weather-loader.js";
 import "./styles.css";
 
 const defaultLocation = {
@@ -45,6 +45,8 @@ function App() {
   const [searching, setSearching] = useState(false);
   const [weatherStatus, setWeatherStatus] = useState("loading");
   const [weatherError, setWeatherError] = useState("");
+  const [detailsStatus, setDetailsStatus] = useState("loading");
+  const [detailsError, setDetailsError] = useState("");
   const [searchError, setSearchError] = useState("");
   const [mode, setMode] = useState("commute");
   const weatherLoader = useRef(null);
@@ -55,21 +57,32 @@ function App() {
     weatherLoader.current.load(location, {
       onLoading: () => {
         setLoading(true);
+        setWeather(null);
         setWeatherStatus("loading");
         setWeatherError("");
+        setDetailsStatus("loading");
+        setDetailsError("");
       },
-      onSuccess: (data) => {
+      onCoreSuccess: (data) => {
         setWeather(data);
         setWeatherStatus("success");
       },
-      onError: (error) => {
+      onCoreError: (error) => {
         setWeatherError(error.message);
         setWeatherStatus("error");
       },
-      onSettled: () => setLoading(false)
+      onCoreSettled: () => setLoading(false),
+      onDetailsSuccess: (data) => {
+        setWeather((core) => mergeWeatherData(core, data));
+        setDetailsStatus("success");
+      },
+      onDetailsError: (error) => {
+        setDetailsError(error.message);
+        setDetailsStatus("error");
+      }
     });
     return () => weatherLoader.current.cancel();
-  }, [location.id]);
+  }, [location.id, location.lon, location.lat]);
 
   async function searchLocations(event) {
     event.preventDefault();
@@ -81,7 +94,7 @@ function App() {
     try {
       const response = await fetch(`/api/locations?q=${encodeURIComponent(keyword)}`);
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "城市搜索失败");
+      if (!response.ok) throw new Error(data.error?.message || data.error || "城市搜索失败");
       setSearchResults(data.locations || []);
       setSearchError("");
     } catch (err) {
@@ -183,13 +196,14 @@ function App() {
           insight={weather?.insight}
           upcomingRain={upcomingRain}
           warnings={warnings}
+          detailsStatus={detailsStatus}
         />
       </section>
 
       <section className="content-grid">
-        <RainTimeline minutely={minutely} summary={weather?.insight?.rainSummary} loading={loading} />
+        <RainTimeline minutely={minutely} summary={weather?.insight?.rainSummary} status={detailsStatus} error={detailsError} />
         <Forecast daily={daily} hourly={hourly} loading={loading} />
-        <Scenario mode={mode} now={now} daily={daily} indices={indices} loading={loading} />
+        <Scenario mode={mode} now={now} daily={daily} indices={indices} loading={loading} detailsStatus={detailsStatus} detailsError={detailsError} />
         <Premium />
       </section>
       </main>
@@ -197,7 +211,7 @@ function App() {
   );
 }
 
-function WeatherPanel({ loading, error, now, weatherKind, insight, upcomingRain, warnings }) {
+function WeatherPanel({ loading, error, now, weatherKind, insight, upcomingRain, warnings, detailsStatus }) {
   if (loading) {
     return (
       <aside className="weather-panel loading-panel" aria-busy="true" aria-live="polite">
@@ -206,7 +220,7 @@ function WeatherPanel({ loading, error, now, weatherKind, insight, upcomingRain,
         </div>
         <div className="loading-copy">
           <strong>正在同步和风天气</strong>
-          <span>实时天气、分钟降雨和出门评分加载中</span>
+          <span>实时天气、预报和出门评分加载中</span>
         </div>
         <div className="panel-header">
           <div>
@@ -291,7 +305,11 @@ function WeatherPanel({ loading, error, now, weatherKind, insight, upcomingRain,
       </div>
 
       <div className="quick-facts">
-        <Fact icon={Umbrella} label="降雨" value={upcomingRain ? `${upcomingRain} 起` : "两小时内暂无"} />
+        <Fact
+          icon={Umbrella}
+          label="降雨"
+          value={detailsStatus === "loading" ? "分析中" : detailsStatus === "error" ? "暂不可用" : upcomingRain ? `${upcomingRain} 起` : "两小时内暂无"}
+        />
         <Fact icon={Wind} label="风速" value={`${now?.windSpeed || "--"} km/h`} />
         <Fact icon={ShieldAlert} label="预警" value={warnings.length ? `${warnings.length} 条` : "暂无"} />
       </div>
@@ -309,7 +327,8 @@ function Fact({ icon: Icon, label, value }) {
   );
 }
 
-function RainTimeline({ minutely, summary, loading }) {
+function RainTimeline({ minutely, summary, status, error }) {
+  const loading = status === "loading";
   const bars = minutely.slice(0, 24);
   const max = Math.max(0.1, ...bars.map((item) => Number(item.precip || 0)));
   const hasData = bars.length > 0;
@@ -333,7 +352,14 @@ function RainTimeline({ minutely, summary, loading }) {
           ))}
         </div>
       ) : null}
-      {!loading && hasRain ? (
+      {status === "error" ? (
+        <div className="detail-status" role="status">
+          <ShieldAlert size={22} />
+          <strong>分钟降雨暂不可用</strong>
+          <span>{error || "请稍后重试"}</span>
+        </div>
+      ) : null}
+      {status === "success" && hasRain ? (
         <div className="rain-bars">
           {bars.map((item, index) => (
             <div className="rain-slot" key={`${item.fxTime}-${index}`}>
@@ -343,7 +369,7 @@ function RainTimeline({ minutely, summary, loading }) {
           ))}
         </div>
       ) : null}
-      {!loading && !hasRain ? (
+      {status === "success" && !hasRain ? (
         <div className="rain-clear-state">
           <div className="clear-badge">
             <Check size={22} />
@@ -402,7 +428,7 @@ function Forecast({ daily, hourly, loading }) {
   );
 }
 
-function Scenario({ mode, now, daily, indices, loading }) {
+function Scenario({ mode, now, daily, indices, loading, detailsStatus, detailsError }) {
   const copy = {
     commute: ["通勤提醒", "雨前 20 分钟提醒、上班前风险卡片、晚高峰二次提醒。", BriefcaseBusiness],
     outdoor: ["户外窗口", "结合降雨、风速、紫外线和体感温度，推荐适合跑步/骑行/露营的时段。", Bike],
@@ -426,7 +452,15 @@ function Scenario({ mode, now, daily, indices, loading }) {
           <>
             <Decision ok label="现在出门" value={`${now?.text || "--"} · 体感 ${now?.feelsLike || "--"}°`} />
             <Decision ok={Number(daily[0]?.uvIndex || 0) < 8} label="防晒风险" value={`UV ${daily[0]?.uvIndex || "--"}`} />
-            <Decision ok={indices.length > 0} label="指数数据" value={indices[0]?.category || "等待接口返回"} />
+            {detailsStatus === "loading" ? (
+              <div className="decision loading-decision" aria-label="生活指数分析中"><span /><div /></div>
+            ) : (
+              <Decision
+                ok={detailsStatus === "success" && indices.length > 0}
+                label="指数数据"
+                value={detailsStatus === "error" ? detailsError || "详情暂不可用" : indices[0]?.category || "暂未返回"}
+              />
+            )}
           </>
         )}
       </div>
