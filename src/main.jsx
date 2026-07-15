@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
   Bell,
@@ -17,6 +17,8 @@ import {
   Umbrella,
   Wind
 } from "lucide-react";
+import { WeatherEffects } from "./WeatherEffects.jsx";
+import { createLatestWeatherLoader } from "./weather-loader.js";
 import "./styles.css";
 
 const defaultLocation = {
@@ -35,32 +37,33 @@ function App() {
   const [weather, setWeather] = useState(null);
   const [loading, setLoading] = useState(true);
   const [searching, setSearching] = useState(false);
-  const [error, setError] = useState("");
+  const [weatherStatus, setWeatherStatus] = useState("loading");
+  const [weatherError, setWeatherError] = useState("");
+  const [searchError, setSearchError] = useState("");
   const [mode, setMode] = useState("commute");
+  const weatherLoader = useRef(null);
+
+  if (!weatherLoader.current) weatherLoader.current = createLatestWeatherLoader();
 
   useEffect(() => {
-    loadWeather(location);
+    weatherLoader.current.load(location, {
+      onLoading: () => {
+        setLoading(true);
+        setWeatherStatus("loading");
+        setWeatherError("");
+      },
+      onSuccess: (data) => {
+        setWeather(data);
+        setWeatherStatus("success");
+      },
+      onError: (error) => {
+        setWeatherError(error.message);
+        setWeatherStatus("error");
+      },
+      onSettled: () => setLoading(false)
+    });
+    return () => weatherLoader.current.cancel();
   }, [location.id]);
-
-  async function loadWeather(target) {
-    setLoading(true);
-    setError("");
-    try {
-      const params = new URLSearchParams({
-        location: target.id,
-        lon: target.lon,
-        lat: target.lat
-      });
-      const response = await fetch(`/api/weather?${params}`);
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "天气数据加载失败");
-      setWeather(data);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  }
 
   async function searchLocations(event) {
     event.preventDefault();
@@ -68,14 +71,15 @@ function App() {
     if (!keyword) return;
 
     setSearching(true);
-    setError("");
+    setSearchError("");
     try {
       const response = await fetch(`/api/locations?q=${encodeURIComponent(keyword)}`);
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "城市搜索失败");
       setSearchResults(data.locations || []);
+      setSearchError("");
     } catch (err) {
-      setError(err.message);
+      setSearchError(err.message);
     } finally {
       setSearching(false);
     }
@@ -95,7 +99,9 @@ function App() {
   }, [minutely]);
 
   return (
-    <main className="app-shell">
+    <>
+      <WeatherEffects now={now} status={weatherStatus} />
+      <main className="app-shell">
       <section className="topbar">
         <div className="brand">
           <span className="brand-mark"><CloudRain size={20} /></span>
@@ -125,6 +131,7 @@ function App() {
                     setLocation(item);
                     setSearchResults([]);
                     setQuery(item.name);
+                    setSearchError("");
                   }}
                 >
                   <MapPin size={15} />
@@ -134,6 +141,8 @@ function App() {
               ))}
             </div>
           )}
+
+          {searchError && <p className="search-error" role="alert">{searchError}</p>}
 
           <div className="location-line">
             <LocateFixed size={17} />
@@ -161,7 +170,7 @@ function App() {
 
         <WeatherPanel
           loading={loading}
-          error={error}
+          error={weatherError}
           now={now}
           insight={weather?.insight}
           upcomingRain={upcomingRain}
@@ -175,7 +184,8 @@ function App() {
         <Scenario mode={mode} now={now} daily={daily} indices={indices} loading={loading} />
         <Premium />
       </section>
-    </main>
+      </main>
+    </>
   );
 }
 
