@@ -75,6 +75,16 @@ export function createLatestWeatherLoader(fetchImpl = fetch) {
   return { load, cancel };
 }
 
+export function mergeWeatherData(core, details) {
+  return {
+    ...core,
+    minutely: details.minutely,
+    indices: details.indices,
+    insight: { ...core?.insight, ...details?.insight },
+    errors: [...(core?.errors || []), ...(details?.errors || [])]
+  };
+}
+
 function buildLocationKey(target) {
   return `${String(target.id)}|${String(target.lon)}|${String(target.lat)}`;
 }

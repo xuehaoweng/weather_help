@@ -1,6 +1,30 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createLatestWeatherLoader } from "./weather-loader.js";
+import { createLatestWeatherLoader, mergeWeatherData } from "./weather-loader.js";
+
+test("merges details without replacing core insight or errors", () => {
+  const core = {
+    location: "a",
+    now: { now: { text: "晴" } },
+    insight: { title: "适合出门", commuteScore: { value: 92 } },
+    errors: [{ source: "warning" }]
+  };
+  const details = {
+    location: "a",
+    minutely: { minutely: [] },
+    indices: { daily: [] },
+    insight: { rainSummary: "两小时无雨", maxPrecip: 0 },
+    errors: [{ source: "indices" }]
+  };
+
+  assert.deepEqual(mergeWeatherData(core, details), {
+    ...core,
+    minutely: details.minutely,
+    indices: details.indices,
+    insight: { ...core.insight, ...details.insight },
+    errors: [...core.errors, ...details.errors]
+  });
+});
 
 test("buffers details until matching core succeeds", async () => {
   const core = deferred();

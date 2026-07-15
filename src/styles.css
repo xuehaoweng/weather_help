@@ -806,6 +806,28 @@ h1 {
   background: rgba(49, 117, 151, 0.16);
 }
 
+.detail-status {
+  min-height: 150px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 8px;
+  padding: 20px;
+  color: #64756f;
+  text-align: center;
+  border: 1px dashed rgba(36, 79, 70, 0.22);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.4);
+}
+
+.detail-status strong {
+  color: #244f46;
+}
+
+.detail-status span {
+  font-size: 13px;
+}
+
 .rain-clear-state {
   display: grid;
   grid-template-columns: 54px minmax(0, 1fr);
