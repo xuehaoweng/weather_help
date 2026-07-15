@@ -5,6 +5,7 @@
   "license": "MIT",
   "type": "module",
   "scripts": {
+    "test": "node --test src/weather-effects.test.js src/weather-loader.test.js",
     "dev": "concurrently \"npm:dev:api\" \"npm:dev:web\"",
     "dev:mock": "QWEATHER_MOCK=true npm run dev",
     "dev:api": "node server/index.js",
