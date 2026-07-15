@@ -13,6 +13,10 @@ export function WeatherEffects({ now, status }) {
     "--atmosphere-duration": `${scene.atmosphereDuration}s`,
     "--dust-duration": `${scene.dustDuration}s`,
     "--dust-offset-x": `${scene.dustOffsetX}px`,
+    "--rain-tilt": `${Math.max(-28, Math.min(28, scene.rainOffsetX / 6))}deg`,
+    "--cloud-start": scene.windDirectionX >= 0 ? "-30vw" : "108vw",
+    "--cloud-travel": scene.windDirectionX >= 0 ? "140vw" : "-140vw",
+    "--atmosphere-travel": scene.windDirectionX >= 0 ? "35vw" : "-35vw",
     "--weather-intensity": scene.intensity,
     "--cloud-factor": scene.cloudFactor,
     "--wind-direction": scene.windDirectionX >= 0 ? 1 : -1
@@ -41,7 +45,7 @@ function CelestialEffect({ scene }) {
     <div className={`celestial ${scene.isNight ? "celestial--moon" : "celestial--sun"}`}>
       {!scene.isNight && (
         <div className="sun-rays">
-          {Array.from({ length: 12 }, (_, index) => <span key={index} style={{ "--ray-index": index }} />)}
+          {Array.from({ length: 12 }, (_, index) => <span key={index} style={{ "--ray-angle": `${index * 30}deg` }} />)}
         </div>
       )}
       <span className="celestial-core" />
@@ -65,6 +69,7 @@ function CloudLayer({ scene }) {
               "--cloud-top": `${top}%`,
               "--cloud-scale": scale,
               "--cloud-delay": `${-seeded(index, 23) * scene.cloudDuration}s`,
+              "--cloud-static-left": `${10 + seeded(index, 19) * 68}%`,
               "--cloud-opacity": 0.34 + scene.cloudFactor * 0.3 - index * 0.04
             }}
           >
@@ -87,7 +92,7 @@ function RainLayer({ scene }) {
           style={{
             "--particle-left": `${seeded(index, 17) * 112 - 6}%`,
             "--particle-delay": `${-seeded(index, 29) * scene.rainDuration}s`,
-            "--particle-speed": 0.85 + seeded(index, 41) * 0.3,
+            "--particle-duration": `${scene.rainDuration * (0.85 + seeded(index, 41) * 0.3)}s`,
             "--drop-length": `${18 + seeded(index, 47) * 16}px`,
             "--drop-opacity": 0.18 + scene.intensity * 0.24
           }}
@@ -108,7 +113,7 @@ function SnowLayer({ scene }) {
           style={{
             "--particle-left": `${seeded(index, 13) * 108 - 4}%`,
             "--particle-delay": `${-seeded(index, 31) * scene.snowDuration}s`,
-            "--particle-speed": 0.85 + seeded(index, 37) * 0.3,
+            "--particle-duration": `${scene.snowDuration * (0.85 + seeded(index, 37) * 0.3)}s`,
             "--flake-size": `${4 + seeded(index, 43) * 7}px`,
             "--flake-sway": `${18 + seeded(index, 53) * 26}px`
           }}
@@ -130,7 +135,11 @@ function AtmosphereLayer({ scene }) {
   return (
     <div className={`atmosphere-layer atmosphere-layer--${scene.kind}`}>
       {bands && Array.from({ length: 3 }, (_, index) => (
-        <i className="atmosphere-band" key={index} style={{ "--band-index": index }} />
+        <i
+          className="atmosphere-band"
+          key={index}
+          style={{ "--band-top": `${18 + index * 21}%`, "--band-opacity": 0.2 + index * 0.06 }}
+        />
       ))}
       {dust && Array.from({ length: scene.dustCount }, (_, index) => (
         <i
