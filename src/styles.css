@@ -1131,15 +1131,11 @@ h1 {
   0%,
   100% {
     transform: scale(0.97);
-    box-shadow:
-      0 0 24px 10px rgba(255, 215, 108, 0.4),
-      0 0 66px 28px rgba(255, 221, 127, 0.16);
+    opacity: 0.9;
   }
   50% {
     transform: scale(1.04);
-    box-shadow:
-      0 0 34px 16px rgba(255, 215, 108, 0.5),
-      0 0 84px 38px rgba(255, 221, 127, 0.23);
+    opacity: 1;
   }
 }
 
@@ -1154,10 +1150,10 @@ h1 {
 
 @keyframes cloudBreathe {
   from {
-    transform: translate3d(0, 0, 0) scale(var(--cloud-scale));
+    opacity: var(--cloud-soft-opacity);
   }
   to {
-    transform: translate3d(0, -4px, 0) scale(var(--cloud-scale));
+    opacity: var(--cloud-opacity);
   }
 }
 

@@ -34,6 +34,10 @@ const SNOW_MINIMUMS = new Map([
   [404, 0.35], [405, 0.35], [406, 0.35], [456, 0.35], [499, 0.35]
 ]);
 
+export function particleDuration(base, factor, min, max) {
+  return clamp(base * factor, min, max);
+}
+
 export function resolveWeatherScene(now, status, { compact = false } = {}) {
   if (status !== "success" || !now) return emptyScene();
 
@@ -121,7 +125,8 @@ function classify(icon, text = "") {
 function getPrecipitationType(kind, icon, text = "") {
   if (kind === "rain" || kind === "thunder") return "rain";
   if (kind !== "snow") return "none";
-  if ((icon !== null && MIXED_ICONS.has(icon)) || /雨夹雪|雨雪/.test(text)) return "mixed";
+  if (icon !== null && ICONS.snow.has(icon)) return MIXED_ICONS.has(icon) ? "mixed" : "snow";
+  if (/雨夹雪|雨雪/.test(text)) return "mixed";
   return "snow";
 }
 

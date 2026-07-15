@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { resolveWeatherScene } from "./weather-effects.js";
+import { particleDuration, resolveWeatherScene } from "./weather-effects.js";
 
 export function WeatherEffects({ now, status }) {
   const compact = useCompactViewport();
@@ -16,7 +16,7 @@ export function WeatherEffects({ now, status }) {
     "--rain-tilt": `${Math.max(-28, Math.min(28, scene.rainOffsetX / 6))}deg`,
     "--cloud-start": scene.windDirectionX >= 0 ? "-30vw" : "108vw",
     "--cloud-travel": scene.windDirectionX >= 0 ? "140vw" : "-140vw",
-    "--atmosphere-travel": scene.windDirectionX >= 0 ? "35vw" : "-35vw",
+    "--atmosphere-travel": scene.windDirectionX >= 0 ? "156vw" : "-156vw",
     "--weather-intensity": scene.intensity,
     "--cloud-factor": scene.cloudFactor,
     "--wind-direction": scene.windDirectionX >= 0 ? 1 : -1
@@ -70,7 +70,8 @@ function CloudLayer({ scene }) {
               "--cloud-scale": scale,
               "--cloud-delay": `${-seeded(index, 23) * scene.cloudDuration}s`,
               "--cloud-static-left": `${10 + seeded(index, 19) * 68}%`,
-              "--cloud-opacity": 0.34 + scene.cloudFactor * 0.3 - index * 0.04
+              "--cloud-opacity": 0.34 + scene.cloudFactor * 0.3 - index * 0.04,
+              "--cloud-soft-opacity": 0.28 + scene.cloudFactor * 0.25 - index * 0.035
             }}
           >
             <i /><i /><i />
@@ -92,7 +93,7 @@ function RainLayer({ scene }) {
           style={{
             "--particle-left": `${seeded(index, 17) * 112 - 6}%`,
             "--particle-delay": `${-seeded(index, 29) * scene.rainDuration}s`,
-            "--particle-duration": `${scene.rainDuration * (0.85 + seeded(index, 41) * 0.3)}s`,
+            "--particle-duration": `${particleDuration(scene.rainDuration, 0.85 + seeded(index, 41) * 0.3, 0.55, 1.2)}s`,
             "--drop-length": `${18 + seeded(index, 47) * 16}px`,
             "--drop-opacity": 0.18 + scene.intensity * 0.24
           }}
@@ -113,7 +114,7 @@ function SnowLayer({ scene }) {
           style={{
             "--particle-left": `${seeded(index, 13) * 108 - 4}%`,
             "--particle-delay": `${-seeded(index, 31) * scene.snowDuration}s`,
-            "--particle-duration": `${scene.snowDuration * (0.85 + seeded(index, 37) * 0.3)}s`,
+            "--particle-duration": `${particleDuration(scene.snowDuration, 0.85 + seeded(index, 37) * 0.3, 2.8, 5.5)}s`,
             "--flake-size": `${4 + seeded(index, 43) * 7}px`,
             "--flake-sway": `${18 + seeded(index, 53) * 26}px`
           }}

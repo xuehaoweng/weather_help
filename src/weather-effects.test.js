@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { resolveWeatherScene } from "./weather-effects.js";
+import { particleDuration, resolveWeatherScene } from "./weather-effects.js";
 import { mockLocations, mockWeatherPayload } from "../server/mock-data.js";
 
 const expectedIcons = {
@@ -64,6 +64,12 @@ test("night and mixed precipitation variants are explicit", () => {
     assert.ok(scene.rainCount <= Math.ceil(72 * 0.25), `mixed rain cap ${icon}`);
   }
   assert.equal(resolveWeatherScene({ text: "晴" }, "success").isNight, false);
+});
+
+test("known pure snow icon cannot be promoted to mixed by text", () => {
+  const scene = resolveWeatherScene({ icon: "400", text: "雨夹雪", precip: "1" }, "success");
+  assert.equal(scene.precipitationType, "snow");
+  assert.equal(scene.rainCount, 0);
 });
 
 test("wind angles map to screen horizontal direction", () => {
@@ -152,6 +158,13 @@ test("cloud atmosphere and dust durations follow bounded wind formulas", () => {
   close(dust.dustOffsetX, 280);
   assert.equal(resolveWeatherScene({ icon: "503", windSpeed: "0" }, "success").dustCount, 0);
   assert.equal(resolveWeatherScene({ icon: "503", wind360: "270", windSpeed: "50" }, "success", { compact: true }).dustCount, 18);
+});
+
+test("per-particle duration is clamped after deterministic jitter", () => {
+  assert.equal(particleDuration(0.6, 0.85, 0.55, 1.2), 0.55);
+  assert.equal(particleDuration(1.15, 1.15, 0.55, 1.2), 1.2);
+  assert.equal(particleDuration(3, 0.85, 2.8, 5.5), 2.8);
+  assert.equal(particleDuration(5, 1.15, 2.8, 5.5), 5.5);
 });
 
 test("Mock cities expose every primary scene with deterministic fields", () => {
