@@ -6,7 +6,12 @@ import {
   BriefcaseBusiness,
   CalendarClock,
   Check,
+  Cloud,
+  CloudFog,
+  CloudLightning,
   CloudRain,
+  CloudSnow,
+  CloudSun,
   Crown,
   LocateFixed,
   MapPin,
@@ -18,6 +23,7 @@ import {
   Wind
 } from "lucide-react";
 import { WeatherEffects } from "./WeatherEffects.jsx";
+import { resolveWeatherScene } from "./weather-effects.js";
 import { createLatestWeatherLoader } from "./weather-loader.js";
 import "./styles.css";
 
@@ -86,6 +92,7 @@ function App() {
   }
 
   const now = weather?.now?.now;
+  const weatherKind = useMemo(() => resolveWeatherScene(now, weatherStatus).kind, [now, weatherStatus]);
   const daily = weather?.daily?.daily || [];
   const hourly = weather?.hourly?.hourly || [];
   const minutely = weather?.minutely?.minutely || [];
@@ -172,6 +179,7 @@ function App() {
           loading={loading}
           error={weatherError}
           now={now}
+          weatherKind={weatherKind}
           insight={weather?.insight}
           upcomingRain={upcomingRain}
           warnings={warnings}
@@ -189,7 +197,7 @@ function App() {
   );
 }
 
-function WeatherPanel({ loading, error, now, insight, upcomingRain, warnings }) {
+function WeatherPanel({ loading, error, now, weatherKind, insight, upcomingRain, warnings }) {
   if (loading) {
     return (
       <aside className="weather-panel loading-panel" aria-busy="true" aria-live="polite">
@@ -244,6 +252,18 @@ function WeatherPanel({ loading, error, now, insight, upcomingRain, warnings }) 
     );
   }
 
+  const CurrentWeatherIcon = {
+    clear: Sun,
+    cloudy: CloudSun,
+    overcast: Cloud,
+    rain: CloudRain,
+    snow: CloudSnow,
+    thunder: CloudLightning,
+    fog: CloudFog,
+    haze: CloudFog,
+    dust: Wind
+  }[weatherKind] || Cloud;
+
   return (
     <aside className="weather-panel">
       <div className="panel-header">
@@ -251,7 +271,7 @@ function WeatherPanel({ loading, error, now, insight, upcomingRain, warnings }) 
           <span>当前体感</span>
           <strong>{now?.feelsLike || now?.temp}°</strong>
         </div>
-        <div className="weather-icon"><Sun size={42} /></div>
+        <div className="weather-icon"><CurrentWeatherIcon size={42} /></div>
       </div>
 
       <div className="temp-row">
