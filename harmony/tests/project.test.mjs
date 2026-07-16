@@ -361,6 +361,11 @@ test('HarmonyOS ArkWeb shell enforces navigation and failure behavior', () => {
   );
   assert.match(indexPage, /uri:\s*url/);
   assert.match(indexPage, /\.onOverrideUrlLoading\(/);
+  assert.match(
+    indexPage,
+    /\.onOverrideUrlLoading\(\(event\): boolean => \{[\s\S]*const url: string = event\.getRequestUrl\(\);[\s\S]*isTrustedAppUrl\(url\)[\s\S]*this\.openExternal\(url\)/,
+  );
+  assert.doesNotMatch(indexPage, /event\.request\.getRequestUrl\(\)/);
   assert.match(indexPage, /LoadingProgress\(\)/);
   assert.match(indexPage, /\$r\('app\.string\.loading_message'\)/);
   assert.match(indexPage, /\$r\('app\.string\.error_title'\)/);

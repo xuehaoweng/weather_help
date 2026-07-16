@@ -84,7 +84,7 @@ struct Index {
           }
         })
         .onOverrideUrlLoading((event): boolean => {
-          const url: string = event.request.getRequestUrl();
+          const url: string = event.getRequestUrl();
           if (isTrustedAppUrl(url)) {
             return false;
           }
