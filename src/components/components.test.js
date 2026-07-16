@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { CurrentConditions } from "./CurrentConditions.js";
 import { LocationPicker } from "./LocationPicker.js";
 import { MobileSummary } from "./MobileSummary.js";
 import { ReminderSettings } from "./ReminderSettings.js";
@@ -107,4 +108,46 @@ test("mobile summary contains the core first-screen facts", () => {
   assert.match(html, /27°/);
   assert.match(html, /10:55 起/);
   assert.match(html, /64/);
+});
+
+test("current conditions shows a usable empty state without fake metrics", () => {
+  const html = renderToStaticMarkup(
+    h(CurrentConditions, {
+      now: null,
+      weatherKind: "cloudy",
+      onRetry: () => {}
+    })
+  );
+
+  assert.match(html, /实时天气暂不可用/);
+  assert.match(html, /重新加载/);
+  assert.doesNotMatch(html, /0°|>°<|湿度 %|能见度 km|--°/);
+});
+
+test("current conditions marks stale data and preserves a real zero temperature", () => {
+  const html = renderToStaticMarkup(
+    h(CurrentConditions, {
+      now: { temp: "0", feelsLike: "0", text: "晴", humidity: "45", vis: "10" },
+      weatherKind: "clear",
+      stale: true,
+      onRetry: () => {}
+    })
+  );
+
+  assert.match(html, /实时数据更新延迟，正在使用最近数据/);
+  assert.match(html, /0°/);
+  assert.match(html, /湿度 45% · 能见度 10km/);
+});
+
+test("mobile summary omits the degree unit when realtime weather is missing", () => {
+  const html = renderToStaticMarkup(
+    h(MobileSummary, {
+      now: null,
+      insight: { title: "预报仍可查看", score: { value: 92, label: "顺畅" } },
+      rainText: "分析中"
+    })
+  );
+
+  assert.match(html, /暂不可用/);
+  assert.doesNotMatch(html, /--°|>°</);
 });

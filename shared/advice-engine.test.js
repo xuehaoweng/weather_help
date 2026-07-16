@@ -99,3 +99,9 @@ test("warnings become the leading risk across scenarios", () => {
   assert.equal(insight.scenarios.outdoor.decisions[0].status, "danger");
   assert.equal(insight.scenarios.family.decisions[0].status, "danger");
 });
+
+test("missing current temperature is not treated as zero degrees", () => {
+  const insight = buildWeatherInsight({ now: {}, today: {} });
+
+  assert.equal(insight.score.factors.some((item) => item.key === "temperature"), false);
+});

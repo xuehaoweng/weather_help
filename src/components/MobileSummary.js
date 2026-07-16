@@ -4,10 +4,13 @@ import { CloudRain, Gauge, ThermometerSun } from "lucide-react";
 const h = React.createElement;
 
 export function MobileSummary({ now, insight, rainText }) {
+  const temperature = now?.temp !== null && now?.temp !== undefined && String(now.temp).trim() !== ""
+    ? `${now.temp}°`
+    : "暂不可用";
   return h("section", { className: "mobile-summary", "aria-label": "当前天气摘要" },
     h("p", { className: "mobile-summary-title" }, insight?.title || "正在生成出门建议"),
     h("div", { className: "mobile-summary-grid" },
-      h(SummaryFact, { icon: ThermometerSun, label: now?.text || "天气", value: `${now?.temp || "--"}°` }),
+      h(SummaryFact, { icon: ThermometerSun, label: now?.text || "实时天气", value: temperature }),
       h(SummaryFact, { icon: CloudRain, label: "降雨", value: rainText || "分析中" }),
       h(SummaryFact, { icon: Gauge, label: insight?.score?.label || "评分", value: insight?.score?.value || "--" })
     )

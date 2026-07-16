@@ -15,7 +15,7 @@ export function buildWeatherInsight(input = {}) {
     wind: number(now.windSpeed),
     uv: number(today.uvIndex),
     warningCount: warnings.length,
-    temp: number(now.temp)
+    temp: optionalNumber(now.temp)
   });
   const context = {
     now,
@@ -230,6 +230,12 @@ function decision(key, status, label, value, reason) {
 function number(value) {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function optionalNumber(value) {
+  if (value === null || value === undefined || value === "") return Number.NaN;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : Number.NaN;
 }
 
 function formatNumber(value) {

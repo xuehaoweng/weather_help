@@ -6,12 +6,7 @@ import {
   BriefcaseBusiness,
   CalendarClock,
   Check,
-  Cloud,
-  CloudFog,
-  CloudLightning,
   CloudRain,
-  CloudSnow,
-  CloudSun,
   ShieldAlert,
   Sun,
   Umbrella,
@@ -20,6 +15,7 @@ import {
 import { WeatherEffects } from "./WeatherEffects.jsx";
 import { AdminApp } from "./AdminApp.js";
 import { createAnalyticsClient } from "./analytics-client.js";
+import { CurrentConditions, hasWeatherValue } from "./components/CurrentConditions.js";
 import { LocationPicker } from "./components/LocationPicker.js";
 import { MobileSummary } from "./components/MobileSummary.js";
 import { ReminderSettings } from "./components/ReminderSettings.js";
@@ -377,6 +373,7 @@ function App() {
           upcomingRain={upcomingRain}
           warnings={warnings}
           detailsStatus={detailsStatus}
+          staleNow={weather?.staleSources?.includes("now")}
           onRetry={() => setReloadKey((value) => value + 1)}
         />
       </section>
@@ -401,7 +398,7 @@ function App() {
   );
 }
 
-function WeatherPanel({ loading, error, now, weatherKind, insight, upcomingRain, warnings, detailsStatus, onRetry }) {
+function WeatherPanel({ loading, error, now, weatherKind, insight, upcomingRain, warnings, detailsStatus, staleNow, onRetry }) {
   if (loading) {
     return (
       <aside className="weather-panel loading-panel" aria-busy="true" aria-live="polite">
@@ -457,35 +454,14 @@ function WeatherPanel({ loading, error, now, weatherKind, insight, upcomingRain,
     );
   }
 
-  const CurrentWeatherIcon = {
-    clear: Sun,
-    cloudy: CloudSun,
-    overcast: Cloud,
-    rain: CloudRain,
-    snow: CloudSnow,
-    thunder: CloudLightning,
-    fog: CloudFog,
-    haze: CloudFog,
-    dust: Wind
-  }[weatherKind] || Cloud;
-
   return (
     <aside className="weather-panel">
-      <div className="panel-header">
-        <div>
-          <span>当前体感</span>
-          <strong>{now?.feelsLike || now?.temp}°</strong>
-        </div>
-        <div className="weather-icon"><CurrentWeatherIcon size={42} /></div>
-      </div>
-
-      <div className="temp-row">
-        <span className="temp">{now?.temp}°</span>
-        <div>
-          <h2>{now?.text}</h2>
-          <p>湿度 {now?.humidity}% · 能见度 {now?.vis}km</p>
-        </div>
-      </div>
+      <CurrentConditions
+        now={now}
+        weatherKind={weatherKind}
+        stale={staleNow}
+        onRetry={onRetry}
+      />
 
       <div className="score-card">
         <div>
@@ -507,7 +483,7 @@ function WeatherPanel({ loading, error, now, weatherKind, insight, upcomingRain,
           label="降雨"
           value={detailsStatus === "loading" ? "分析中" : detailsStatus === "error" ? "暂不可用" : upcomingRain ? `${upcomingRain} 起` : "两小时内暂无"}
         />
-        <Fact icon={Wind} label="风速" value={`${now?.windSpeed || "--"} km/h`} />
+        <Fact icon={Wind} label="风速" value={hasWeatherValue(now?.windSpeed) ? `${now.windSpeed} km/h` : "暂不可用"} />
         <Fact icon={ShieldAlert} label="预警" value={warnings.length ? `${warnings.length} 条` : "暂无"} />
       </div>
     </aside>

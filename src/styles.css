@@ -630,6 +630,42 @@ h1 {
   text-align: center;
 }
 
+.current-weather-unavailable {
+  display: grid;
+  gap: 10px;
+  min-height: 170px;
+  place-content: center;
+  text-align: center;
+  color: #52645e;
+}
+
+.current-weather-unavailable strong {
+  color: #183f37;
+  font-size: 22px;
+}
+
+.current-weather-unavailable p {
+  margin: 0;
+  line-height: 1.6;
+}
+
+.current-weather-unavailable button {
+  justify-self: center;
+  border: 0;
+  border-radius: 8px;
+  background: #244f46;
+  color: white;
+  padding: 10px 14px;
+  font-weight: 800;
+}
+
+.stale-weather {
+  margin: -10px 0 18px;
+  color: #805900;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
 .loading-panel {
   position: relative;
   overflow: hidden;
