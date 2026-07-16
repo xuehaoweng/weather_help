@@ -49,7 +49,7 @@ find harmony -type f \( -name '*.hap' -o -name '*.app' -o -name '*.p12' -o -name
 ### DevEco Studio
 
 1. 选择 **Build > Build Hap(s)/APP(s) > Build Hap(s)**。
-2. 构建成功后，在 `harmony/entry/build/default/outputs/` 下查找生成的 Debug HAP；DevEco Studio 的 Build 窗口也会显示实际输出路径。
+2. 构建成功后，在 `harmony/entry/build/default/outputs/default/` 下查找生成的 Debug HAP；DevEco Studio 的 Build 窗口也会显示实际输出路径。
 3. 使用 USB 连接已开启开发者模式的 HarmonyOS 6 真机，在设备选择器中选中手机。
 4. 点击 **Run 'entry'**。DevEco Studio 会使用自动签名后的 HAP 完成真机安装并启动应用。
 

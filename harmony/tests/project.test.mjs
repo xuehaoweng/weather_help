@@ -277,6 +277,61 @@ test('HarmonyOS README documents the DevEco signing and install flow', () => {
   for (const topic of requiredTopics) {
     assert.match(readme, topic);
   }
+
+  const requiredWorkflowContracts = [
+    {
+      pattern: /(?:Open Project|选择 \*\*Open\*\*)/,
+      message: 'README must explain how to open the project',
+    },
+    {
+      pattern: /选择仓库中的 `harmony` 目录/,
+      message: 'README must tell users to select the harmony directory',
+    },
+    {
+      pattern: /\*\*Sync\*\*/,
+      message: 'README must document DevEco project Sync',
+    },
+    {
+      pattern: /华为开发者账号/,
+      message: 'README must require a Huawei developer account',
+    },
+    {
+      pattern: /签名材料只允许保存在开发机。不得提交/s,
+      message: 'README must keep automatic signing local and uncommitted',
+    },
+    {
+      pattern: /Build > Build Hap\(s\)\/APP\(s\) > Build Hap\(s\)/,
+      message: 'README must document the Build Hap(s) menu action',
+    },
+    {
+      pattern: /entry\/build\/default\/outputs\/default\//,
+      message: 'README must document the exact Debug HAP output directory',
+    },
+    {
+      pattern: /(?:Run 'entry'|hdc install)/,
+      message: 'README must document real-device Run or HDC installation',
+    },
+    {
+      pattern: /### ArkWeb 白屏/,
+      message: 'README must troubleshoot an ArkWeb blank screen',
+    },
+    {
+      pattern: /### Sync 或 Hvigor 失败/,
+      message: 'README must troubleshoot Sync failures',
+    },
+    {
+      pattern: /### 自动签名或安装失败/,
+      message: 'README must troubleshoot signing failures',
+    },
+    {
+      pattern: /### 只有部分天气数据/,
+      message: 'README must troubleshoot partial weather data',
+    },
+  ];
+
+  for (const { pattern, message } of requiredWorkflowContracts) {
+    assert.match(readme, pattern, message);
+  }
 });
 
 test('HarmonyOS app URL policy only trusts the configured HTTPS origin', () => {
