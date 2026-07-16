@@ -9,11 +9,21 @@ export function createWeatherApp({
   apiHost = "devapi.qweather.com",
   health = {},
   lookupLocations,
+  analyticsStore,
+  analyticsEnabled = false,
   productionDir
 }) {
   const app = express();
-  const handlers = createWeatherHandlers({ weatherService, useMock, apiHost, health, lookupLocations });
-  app.use(express.json());
+  const handlers = createWeatherHandlers({
+    weatherService,
+    useMock,
+    apiHost,
+    health,
+    lookupLocations,
+    analyticsStore,
+    analyticsEnabled
+  });
+  app.use(express.json({ limit: "4kb" }));
 
   app.get("/api/health", (_req, res) => {
     const result = handlers.health();
@@ -27,6 +37,11 @@ export function createWeatherApp({
 
   app.get("/api/weather/details", expressRoute((query) => handlers.details(query)));
   app.get("/api/weather", expressRoute((query) => handlers.weather(query)));
+  app.post("/api/analytics/events", async (req, res) => {
+    const result = await handlers.analytics(req.body);
+    if (result.status === 204) return res.status(204).end();
+    return res.status(result.status).json(result.body);
+  });
 
   if (productionDir) {
     app.use(express.static(productionDir));
@@ -41,7 +56,10 @@ export function createWeatherHandlers({
   useMock = false,
   apiHost = "devapi.qweather.com",
   health = {},
-  lookupLocations
+  lookupLocations,
+  analyticsStore,
+  analyticsEnabled = false,
+  logger = console
 }) {
   return {
     health: () => ({ status: 200, body: { ok: true, mode: useMock ? "mock" : "qweather", apiHost, ...health } }),
@@ -65,7 +83,23 @@ export function createWeatherHandlers({
       }
       const data = await lookupLocations(keyword, query);
       return { status: 200, body: { locations: data.location || [], refer: data.refer || null } };
-    })
+    }),
+    analytics: async (body) => {
+      if (!analyticsEnabled || !analyticsStore) return { status: 204, body: null };
+      const event = normalizeAnalyticsEvent(body);
+      if (!event) {
+        return {
+          status: 400,
+          body: { error: { code: "INVALID_ANALYTICS_EVENT", message: "Invalid analytics event" } }
+        };
+      }
+      try {
+        await analyticsStore.record(event);
+      } catch (error) {
+        logger.warn?.("Analytics event was dropped", error?.message);
+      }
+      return { status: 202, body: { accepted: true } };
+    }
   };
 }
 
@@ -80,6 +114,33 @@ function parseCoordinateQuery(value) {
     throw new WeatherInputError("经纬度超出有效范围");
   }
   return { lon, lat };
+}
+
+function normalizeAnalyticsEvent(body) {
+  if (!body || typeof body !== "object" || Array.isArray(body)) return null;
+  const type = String(body.type || "");
+  const visitorId = String(body.visitorId || "");
+  if (!visitorId || visitorId.length > 128) return null;
+  const properties = body.properties && typeof body.properties === "object" && !Array.isArray(body.properties)
+    ? body.properties
+    : {};
+  const keys = Object.keys(properties);
+  const noProperties = () => keys.length === 0;
+
+  if (["page_view", "city_selected", "reminder_enabled", "reminder_disabled", "notification_sent"].includes(type)) {
+    if (!noProperties()) return null;
+    return { type, visitorId, properties: {}, at: new Date().toISOString() };
+  }
+  if (type === "scene_changed") {
+    if (keys.length !== 1 || !["commute", "outdoor", "family"].includes(properties.mode)) return null;
+    return { type, visitorId, properties: { mode: properties.mode }, at: new Date().toISOString() };
+  }
+  if (type === "client_error") {
+    const allowed = ["weather_core", "weather_details", "notification", "location", "unknown"];
+    if (keys.length !== 1 || !allowed.includes(properties.category)) return null;
+    return { type, visitorId, properties: { category: properties.category }, at: new Date().toISOString() };
+  }
+  return null;
 }
 
 function expressRoute(run) {

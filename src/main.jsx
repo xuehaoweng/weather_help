@@ -18,6 +18,7 @@ import {
   Wind
 } from "lucide-react";
 import { WeatherEffects } from "./WeatherEffects.jsx";
+import { createAnalyticsClient } from "./analytics-client.js";
 import { LocationPicker } from "./components/LocationPicker.js";
 import { MobileSummary } from "./components/MobileSummary.js";
 import { ReminderSettings } from "./components/ReminderSettings.js";
@@ -38,6 +39,7 @@ const defaultLocation = {
   lon: "116.40529",
   lat: "39.90499"
 };
+const analytics = createAnalyticsClient();
 
 function App() {
   const [location, setLocation] = useState(defaultLocation);
@@ -62,6 +64,7 @@ function App() {
   const [inPageAlert, setInPageAlert] = useState("");
   const [reloadKey, setReloadKey] = useState(0);
   const weatherLoader = useRef(null);
+  const pageTracked = useRef(false);
 
   if (!weatherLoader.current) weatherLoader.current = createLatestWeatherLoader();
 
@@ -78,10 +81,15 @@ function App() {
       onCoreSuccess: (data) => {
         setWeather(data);
         setWeatherStatus("success");
+        if (!pageTracked.current) {
+          pageTracked.current = true;
+          analytics.track("page_view");
+        }
       },
       onCoreError: (error) => {
         setWeatherError(error.message);
         setWeatherStatus("error");
+        analytics.track("client_error", { category: "weather_core" });
       },
       onCoreSettled: () => setLoading(false),
       onDetailsSuccess: (data) => {
@@ -91,6 +99,7 @@ function App() {
       onDetailsError: (error) => {
         setDetailsError(error.message);
         setDetailsStatus("error");
+        analytics.track("client_error", { category: "weather_details" });
         setWeather((current) => current ? {
           ...current,
           insight: { ...current.insight, isPartial: true }
@@ -129,6 +138,7 @@ function App() {
     setQuery(item.name);
     setSearchError("");
     setFavoriteError("");
+    analytics.track("city_selected");
   }
 
   async function useCurrentLocation() {
@@ -155,6 +165,7 @@ function App() {
     } catch (error) {
       const denied = error?.code === 1;
       setSearchError(denied ? "定位权限已拒绝，你仍可以手动搜索城市。" : error.message || "定位失败，请稍后重试。");
+      analytics.track("client_error", { category: "location" });
     } finally {
       setLocating(false);
     }
@@ -200,6 +211,7 @@ function App() {
     setReminder(saved);
     setReminderDraft(saved);
     setReminderOpen(false);
+    analytics.track("reminder_enabled");
     setInPageAlert(notificationPermission === "granted"
       ? `已开启 ${saved.location.name} 的本机雨前提醒。`
       : "已开启页面内雨前提示；浏览器通知未授权。");
@@ -211,6 +223,7 @@ function App() {
     setReminderDraft(saved);
     setReminderOpen(false);
     setInPageAlert("雨前提醒已关闭。");
+    analytics.track("reminder_disabled");
   }
 
   const now = weather?.now?.now;
@@ -260,6 +273,7 @@ function App() {
       });
       if (!result.shouldNotify) return;
       if (result.inPage) setInPageAlert(result.message);
+      if (result.sent) analytics.track("notification_sent");
       const next = saveReminder(globalThis.localStorage, {
         ...reminder,
         lastNotificationKey: result.notificationKey
@@ -340,7 +354,10 @@ function App() {
                 className={mode === key ? "active" : ""}
                 type="button"
                 aria-pressed={mode === key}
-                onClick={() => setMode(key)}
+                onClick={() => {
+                  setMode(key);
+                  analytics.track("scene_changed", { mode: key });
+                }}
               >
                 <Icon size={16} />
                 {label}

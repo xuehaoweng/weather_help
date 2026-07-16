@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createWeatherApp } from "./app.js";
+import { createAnalyticsStore } from "./analytics-store.js";
 import { createQWeatherClient } from "./qweather-client.js";
 import { createWeatherService } from "./weather-service.js";
 
@@ -14,6 +15,12 @@ const apiHost = process.env.QWEATHER_API_HOST || "devapi.qweather.com";
 const geoHost = process.env.QWEATHER_GEO_HOST || "geoapi.qweather.com";
 const apiKey = process.env.QWEATHER_API_KEY;
 const useMock = process.env.QWEATHER_MOCK === "true" || !apiKey;
+const analyticsHashSecret = process.env.ANALYTICS_HASH_SECRET;
+const analyticsEnabled = process.env.ANALYTICS_ENABLED !== "false" && Boolean(analyticsHashSecret);
+const analyticsStore = analyticsEnabled ? createAnalyticsStore({
+  filePath: path.join(rootDir, ".cache", "analytics.json"),
+  hashSecret: analyticsHashSecret
+}) : null;
 const client = createQWeatherClient({
   apiKey,
   timeoutMs: process.env.QWEATHER_TIMEOUT_MS,
@@ -27,8 +34,11 @@ const app = createWeatherApp({
   health: {
     hasApiKey: Boolean(apiKey),
     hasProjectId: Boolean(process.env.QWEATHER_PROJECT_ID),
-    hasCredentialId: Boolean(process.env.QWEATHER_CREDENTIAL_ID)
+    hasCredentialId: Boolean(process.env.QWEATHER_CREDENTIAL_ID),
+    analyticsEnabled
   },
+  analyticsStore,
+  analyticsEnabled,
   lookupLocations: async (query, requestQuery) => {
     const endpoint = geoHost.includes("geoapi.qweather.com") ? "/v2/city/lookup" : "/geo/v2/city/lookup";
     return client.request({
@@ -50,6 +60,7 @@ async function shutdown() {
   if (closing) return;
   closing = true;
   await new Promise((resolve) => server.close(resolve));
+  await analyticsStore?.close();
   await client.close();
 }
 

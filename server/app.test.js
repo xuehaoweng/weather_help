@@ -77,3 +77,47 @@ test("real location search forwards coordinate strings to QWeather lookup", asyn
   assert.equal(result.body.locations[0].name, "上海");
   assert.equal(calls[0].keyword, "121.47,31.23");
 });
+
+test("analytics handler accepts only privacy-safe event shapes", async () => {
+  const events = [];
+  const handlers = createWeatherHandlers({
+    weatherService: createWeatherService({ useMock: true }),
+    useMock: true,
+    analyticsEnabled: true,
+    analyticsStore: {
+      record: async (event) => events.push(event)
+    }
+  });
+
+  assert.equal((await handlers.analytics({ type: "page_view", visitorId: "install-a" })).status, 202);
+  assert.equal((await handlers.analytics({
+    type: "scene_changed",
+    visitorId: "install-a",
+    properties: { mode: "outdoor" }
+  })).status, 202);
+  assert.equal((await handlers.analytics({ type: "unknown", visitorId: "install-a" })).status, 400);
+  assert.equal((await handlers.analytics({
+    type: "scene_changed",
+    visitorId: "install-a",
+    properties: { mode: "secret" }
+  })).status, 400);
+  assert.equal((await handlers.analytics({
+    type: "city_selected",
+    visitorId: "install-a",
+    properties: { city: "上海" }
+  })).status, 400);
+  assert.deepEqual(events.map((event) => event.type), ["page_view", "scene_changed"]);
+});
+
+test("disabled analytics acknowledges events without storing them", async () => {
+  let calls = 0;
+  const handlers = createWeatherHandlers({
+    weatherService: createWeatherService({ useMock: true }),
+    useMock: true,
+    analyticsEnabled: false,
+    analyticsStore: { record: async () => { calls += 1; } }
+  });
+
+  assert.equal((await handlers.analytics({ type: "page_view", visitorId: "a" })).status, 204);
+  assert.equal(calls, 0);
+});
