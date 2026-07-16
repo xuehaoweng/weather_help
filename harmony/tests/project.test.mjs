@@ -230,3 +230,28 @@ test('HarmonyOS project excludes signing materials and sensitive fields', () => 
     /storeFile|storePassword|keyPassword|keyPwd|keyAlias|certpath|certificate|signAlg/i,
   );
 });
+
+test('HarmonyOS app URL policy only trusts the configured HTTPS origin', () => {
+  const appConfig = readFileSync(
+    join(harmonyRoot, 'entry/src/main/ets/config/AppConfig.ets'),
+    'utf8',
+  );
+
+  assert.match(
+    appConfig,
+    /export const APP_URL: string = 'https:\/\/43\.129\.249\.56\/';/,
+  );
+  assert.match(
+    appConfig,
+    /return url === APP_URL \|\| url\.startsWith\(APP_URL\);/,
+  );
+  assert.match(
+    appConfig,
+    /return url\.startsWith\('https:\/\/'\) && !isTrustedAppUrl\(url\);/,
+  );
+  assert.doesNotMatch(appConfig, /http:\/\/43\.129\.249\.56/);
+  assert.doesNotMatch(
+    appConfig,
+    /sslError|handleConfirm|ignoreSsl/,
+  );
+});
