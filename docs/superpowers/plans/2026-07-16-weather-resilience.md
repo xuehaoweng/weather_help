@@ -353,7 +353,7 @@ git add docs/superpowers/plans/2026-07-16-weather-resilience.md
 git commit -m "docs: complete weather resilience plan"
 ```
 
-- [ ] **步骤 6：推送 main**
+- [x] **步骤 6：推送 main**
 
 ```bash
 git push origin main
