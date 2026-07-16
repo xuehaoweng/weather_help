@@ -231,6 +231,54 @@ test('HarmonyOS project excludes signing materials and sensitive fields', () => 
   );
 });
 
+test('repository ignores DevEco output and HarmonyOS signing materials', () => {
+  const gitignore = readFileSync(join(process.cwd(), '.gitignore'), 'utf8');
+  const requiredRules = [
+    'harmony/.hvigor/',
+    'harmony/.idea/',
+    'harmony/local.properties',
+    'harmony/oh_modules/',
+    'harmony/**/build/',
+    '**/*.hap',
+    '**/*.app',
+    '**/*.p12',
+    '**/*.p7b',
+    '**/*.cer',
+    '**/*.profile',
+  ];
+
+  for (const rule of requiredRules) {
+    assert.match(
+      gitignore,
+      new RegExp(`^${rule.replaceAll(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'm'),
+      `missing .gitignore rule: ${rule}`,
+    );
+  }
+});
+
+test('HarmonyOS README documents the DevEco signing and install flow', () => {
+  const readmePath = join(harmonyRoot, 'README.md');
+  assert.ok(existsSync(readmePath), 'missing harmony/README.md');
+
+  const readme = readFileSync(readmePath, 'utf8');
+  const requiredTopics = [
+    /DevEco Studio 6/,
+    /HarmonyOS 6/,
+    /API 20/,
+    /自动签名/,
+    /https:\/\/43\.129\.249\.56\//,
+    /不得提交.*(?:p12|\.p12)/is,
+    /Build Hap\(s\)/,
+    /真机.*(?:安装|运行)/is,
+    /验收/,
+    /故障排查/,
+  ];
+
+  for (const topic of requiredTopics) {
+    assert.match(readme, topic);
+  }
+});
+
 test('HarmonyOS app URL policy only trusts the configured HTTPS origin', () => {
   const appConfig = readFileSync(
     join(harmonyRoot, 'entry/src/main/ets/config/AppConfig.ets'),

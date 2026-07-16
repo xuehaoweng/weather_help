@@ -7,3 +7,18 @@ npm-debug.log*
 .superpowers/
 .worktrees/
 .cache/
+
+# HarmonyOS / DevEco Studio
+harmony/.hvigor/
+harmony/.idea/
+harmony/local.properties
+harmony/oh_modules/
+harmony/**/build/
+
+# HarmonyOS packages and signing materials
+**/*.hap
+**/*.app
+**/*.p12
+**/*.p7b
+**/*.cer
+**/*.profile
