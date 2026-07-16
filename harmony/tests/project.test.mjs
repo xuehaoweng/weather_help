@@ -326,6 +326,50 @@ test('HarmonyOS entry ability loads the ArkWeb shell page', () => {
   assert.doesNotMatch(entryAbility, /requestPermissionsFromUser/);
 });
 
+test('HarmonyOS navigation state preserves failures through page end', () => {
+  const navigationState = readFileSync(
+    join(
+      harmonyRoot,
+      'entry/src/main/ets/state/NavigationState.ets',
+    ),
+    'utf8',
+  );
+  const executableNavigationState = navigationState
+    .replace(
+      /export interface NavigationState \{[\s\S]*?\}\n/,
+      '',
+    )
+    .replace(/^export /gm, '')
+    .replace(/: boolean\b/g, '')
+    .replace(/: NavigationState\b/g, '');
+  const {
+    navigationStarted,
+    navigationFailed,
+    navigationEnded,
+  } = new Function(
+    `"use strict";
+${executableNavigationState}
+return { navigationStarted, navigationFailed, navigationEnded };`,
+  )();
+
+  let state = navigationStarted();
+  assert.deepEqual(state, { loading: true, failed: false });
+
+  state = navigationFailed();
+  assert.deepEqual(state, { loading: false, failed: true });
+
+  state = navigationEnded(state.failed);
+  assert.deepEqual(
+    state,
+    { loading: false, failed: true },
+    'page end must not erase a failure from the current navigation',
+  );
+
+  state = navigationStarted();
+  state = navigationEnded(state.failed);
+  assert.deepEqual(state, { loading: false, failed: false });
+});
+
 test('HarmonyOS ArkWeb shell enforces navigation and failure behavior', () => {
   const indexPage = readFileSync(
     join(harmonyRoot, 'entry/src/main/ets/pages/Index.ets'),
@@ -359,11 +403,47 @@ test('HarmonyOS ArkWeb shell enforces navigation and failure behavior', () => {
     indexPage,
     /action:\s*'ohos\.want\.action\.viewData'/,
   );
+  assert.match(
+    indexPage,
+    /entities:\s*\[\s*'entity\.system\.browsable',?\s*\]/,
+  );
   assert.match(indexPage, /uri:\s*url/);
+  const openExternalBody = /private openExternal\(url: string\): void \{([\s\S]*?)\n  \}\n\n  onBackPress/
+    .exec(indexPage)?.[1];
+  assert.ok(openExternalBody, 'openExternal method must remain inspectable');
+  assert.match(
+    openExternalBody,
+    /if \(!isExternalHttpsUrl\(url\)\) \{\s*return;\s*\}/,
+  );
+  const rejectedUrlBranch =
+    /if \(!isExternalHttpsUrl\(url\)\) \{([\s\S]*?)\}/
+      .exec(openExternalBody)?.[1] ?? '';
+  assert.doesNotMatch(
+    rejectedUrlBranch,
+    /navigationFailed|failed\s*=\s*true/,
+    'rejected dangerous protocols must not replace the current page',
+  );
+  assert.match(
+    indexPage,
+    /\.onPageBegin\([\s\S]*navigationStarted\(\)/,
+  );
+  assert.match(
+    indexPage,
+    /\.onPageEnd\([\s\S]*navigationEnded\(this\.failed\)/,
+  );
+  assert.match(
+    indexPage,
+    /\.onErrorReceive\([\s\S]*event\?\.request\.isMainFrame\(\)[\s\S]*navigationFailed\(\)/,
+  );
+  assert.match(indexPage, /\.onHttpErrorReceive\(/);
+  assert.match(
+    indexPage,
+    /\.onHttpErrorReceive\(\(event\): void => \{[\s\S]*event\?\.request\.isMainFrame\(\)[\s\S]*event\.response\.getResponseCode\(\)\s*>=\s*400[\s\S]*navigationFailed\(\)/,
+  );
   assert.match(indexPage, /\.onOverrideUrlLoading\(/);
   assert.match(
     indexPage,
-    /\.onOverrideUrlLoading\(\(event\): boolean => \{[\s\S]*const url: string = event\.getRequestUrl\(\);[\s\S]*isTrustedAppUrl\(url\)[\s\S]*this\.openExternal\(url\)/,
+    /\.onOverrideUrlLoading\(\(event\): boolean => \{[\s\S]*const url: string = event\.getRequestUrl\(\);[\s\S]*isTrustedAppUrl\(url\)[\s\S]*isExternalHttpsUrl\(url\)[\s\S]*this\.openExternal\(url\)/,
   );
   assert.doesNotMatch(indexPage, /event\.request\.getRequestUrl\(\)/);
   assert.match(indexPage, /LoadingProgress\(\)/);

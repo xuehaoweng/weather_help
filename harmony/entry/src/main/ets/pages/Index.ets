@@ -6,6 +6,12 @@ import {
   isExternalHttpsUrl,
   isTrustedAppUrl,
 } from '../config/AppConfig';
+import {
+  NavigationState,
+  navigationEnded,
+  navigationFailed,
+  navigationStarted,
+} from '../state/NavigationState';
 
 @Entry
 @Component
@@ -15,22 +21,23 @@ struct Index {
   @State private loading: boolean = true;
   @State private failed: boolean = false;
 
+  private applyNavigationState(state: NavigationState): void {
+    this.loading = state.loading;
+    this.failed = state.failed;
+  }
+
   private retry(): void {
-    this.failed = false;
-    this.loading = true;
+    this.applyNavigationState(navigationStarted());
 
     try {
       this.controller.loadUrl(APP_URL);
     } catch (_error) {
-      this.loading = false;
-      this.failed = true;
+      this.applyNavigationState(navigationFailed());
     }
   }
 
   private openExternal(url: string): void {
     if (!isExternalHttpsUrl(url)) {
-      this.loading = false;
-      this.failed = true;
       return;
     }
 
@@ -38,12 +45,14 @@ struct Index {
       this.getUIContext().getHostContext() as common.UIAbilityContext;
     const want: Want = {
       action: 'ohos.want.action.viewData',
+      entities: [
+        'entity.system.browsable',
+      ],
       uri: url,
     };
 
     context.startAbility(want).catch((_error: BusinessError): void => {
-      this.loading = false;
-      this.failed = true;
+      this.applyNavigationState(navigationFailed());
     });
   }
 
@@ -70,17 +79,22 @@ struct Index {
         .fileAccess(false)
         .mixedMode(MixedMode.None)
         .onPageBegin((): void => {
-          this.loading = true;
-          this.failed = false;
+          this.applyNavigationState(navigationStarted());
         })
         .onPageEnd((): void => {
-          this.loading = false;
-          this.failed = false;
+          this.applyNavigationState(navigationEnded(this.failed));
         })
         .onErrorReceive((event): void => {
           if (event?.request.isMainFrame()) {
-            this.loading = false;
-            this.failed = true;
+            this.applyNavigationState(navigationFailed());
+          }
+        })
+        .onHttpErrorReceive((event): void => {
+          if (
+            event?.request.isMainFrame() &&
+            event.response.getResponseCode() >= 400
+          ) {
+            this.applyNavigationState(navigationFailed());
           }
         })
         .onOverrideUrlLoading((event): boolean => {
@@ -89,7 +103,9 @@ struct Index {
             return false;
           }
 
-          this.openExternal(url);
+          if (isExternalHttpsUrl(url)) {
+            this.openExternal(url);
+          }
           return true;
         })
 
