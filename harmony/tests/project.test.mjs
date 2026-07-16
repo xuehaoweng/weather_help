@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
-import { join, relative } from 'node:path';
+import { extname, join, parse, relative, sep } from 'node:path';
 import { runInNewContext } from 'node:vm';
 import test from 'node:test';
 
@@ -11,10 +11,17 @@ const requiredFiles = [
   'oh-package.json5',
   'hvigor/hvigor-config.json5',
   'AppScope/app.json5',
+  'AppScope/resources/base/element/string.json',
+  'AppScope/resources/base/media/app_icon.svg',
   'entry/build-profile.json5',
   'entry/hvigorfile.ts',
+  'entry/obfuscation-rules.txt',
   'entry/oh-package.json5',
   'entry/src/main/module.json5',
+  'entry/src/main/resources/base/element/color.json',
+  'entry/src/main/resources/base/element/string.json',
+  'entry/src/main/resources/base/media/app_icon.svg',
+  'entry/src/main/resources/base/profile/main_pages.json',
 ];
 
 function readJson5(relativePath) {
@@ -28,6 +35,50 @@ function listProjectFiles(directory) {
     const absolutePath = join(directory, entry.name);
     return entry.isDirectory() ? listProjectFiles(absolutePath) : [absolutePath];
   });
+}
+
+function normalizedProjectPath(filePath) {
+  return relative(harmonyRoot, filePath).replaceAll(sep, '/');
+}
+
+function collectResourceReferences(value, references = []) {
+  if (typeof value === 'string') {
+    const match = /^\$(string|color|media|profile):(.+)$/.exec(value);
+    if (match) {
+      references.push({ type: match[1], name: match[2] });
+    }
+  } else if (Array.isArray(value)) {
+    for (const item of value) {
+      collectResourceReferences(item, references);
+    }
+  } else if (value && typeof value === 'object') {
+    for (const item of Object.values(value)) {
+      collectResourceReferences(item, references);
+    }
+  }
+
+  return references;
+}
+
+function elementResourceNames(relativePath, type) {
+  return new Set(readJson5(relativePath)[type].map(({ name }) => name));
+}
+
+function fileResourceNames(relativeDirectory) {
+  return new Set(
+    readdirSync(join(harmonyRoot, relativeDirectory), { withFileTypes: true })
+      .filter((entry) => entry.isFile())
+      .map((entry) => parse(entry.name).name),
+  );
+}
+
+function assertResourceReferencesResolve(config, resources, scope) {
+  for (const { type, name } of collectResourceReferences(config)) {
+    assert.ok(
+      resources[type]?.has(name),
+      `missing ${scope} resource $${type}:${name}`,
+    );
+  }
 }
 
 test('HarmonyOS 6 HAP project keeps the required static contract', () => {
@@ -49,17 +100,12 @@ test('HarmonyOS 6 HAP project keeps the required static contract', () => {
   assert.equal(defaultProduct.signingConfig, 'default');
   assert.deepEqual(buildProfile.app.signingConfigs, []);
 
-  const projectTexts = listProjectFiles(harmonyRoot)
-    .filter((filePath) => !relative(harmonyRoot, filePath).startsWith('tests/'))
-    .map(
-      (filePath) =>
-        `${relative(harmonyRoot, filePath)}\n${readFileSync(filePath, 'utf8')}`,
-    )
-    .join('\n');
-  assert.doesNotMatch(
-    projectTexts,
-    /storeFile|storePassword|keyPassword|certpath|\.p12\b|\.p7b\b|\.cer\b|\.profile\b/i,
+  const entryModule = buildProfile.modules.find(({ name }) => name === 'entry');
+  assert.equal(entryModule.srcPath, './entry');
+  const rootDefaultTarget = entryModule.targets.find(
+    ({ name }) => name === 'default',
   );
+  assert.deepEqual(rootDefaultTarget.applyToProducts, ['default']);
 
   const appHvigorfile = readFileSync(
     join(harmonyRoot, 'hvigorfile.ts'),
@@ -89,12 +135,24 @@ test('HarmonyOS 6 HAP project keeps the required static contract', () => {
   assert.equal(entryPackage.author, 'xuehaoweng');
 
   const entryBuildProfile = readJson5('entry/build-profile.json5');
+  assert.equal(entryBuildProfile.apiType, 'stageMode');
+  assert.ok(
+    entryBuildProfile.targets.some(({ name }) => name === 'default'),
+    'entry build profile must declare the default target',
+  );
   const releaseBuild = entryBuildProfile.buildOptionSet.find(
     ({ name }) => name === 'release',
   );
   assert.deepEqual(
-    releaseBuild.arkOptions.obfuscation.ruleOptions.consumerFiles,
+    releaseBuild.arkOptions.obfuscation.consumerFiles,
     [],
+  );
+  assert.equal(
+    Object.hasOwn(
+      releaseBuild.arkOptions.obfuscation.ruleOptions,
+      'consumerFiles',
+    ),
+    false,
   );
 
   const moduleConfig = readJson5('entry/src/main/module.json5').module;
@@ -108,4 +166,67 @@ test('HarmonyOS 6 HAP project keeps the required static contract', () => {
   assert.deepEqual(moduleConfig.requestPermissions, [
     { name: 'ohos.permission.INTERNET' },
   ]);
+});
+
+test('AppScope resource references resolve to packaged resources', () => {
+  const appConfig = readJson5('AppScope/app.json5').app;
+  const resources = {
+    string: elementResourceNames(
+      'AppScope/resources/base/element/string.json',
+      'string',
+    ),
+    media: fileResourceNames('AppScope/resources/base/media'),
+  };
+
+  assertResourceReferencesResolve(appConfig, resources, 'AppScope');
+});
+
+test('entry module resource references resolve to packaged resources', () => {
+  const moduleConfig = readJson5('entry/src/main/module.json5').module;
+  const resources = {
+    string: elementResourceNames(
+      'entry/src/main/resources/base/element/string.json',
+      'string',
+    ),
+    color: elementResourceNames(
+      'entry/src/main/resources/base/element/color.json',
+      'color',
+    ),
+    media: fileResourceNames('entry/src/main/resources/base/media'),
+    profile: fileResourceNames('entry/src/main/resources/base/profile'),
+  };
+
+  assertResourceReferencesResolve(moduleConfig, resources, 'entry');
+});
+
+test('HarmonyOS project excludes signing materials and sensitive fields', () => {
+  const forbiddenExtensions = new Set([
+    '.p12',
+    '.p7b',
+    '.cer',
+    '.profile',
+    '.pem',
+    '.key',
+    '.jks',
+    '.keystore',
+  ]);
+  const projectFiles = listProjectFiles(harmonyRoot).filter(
+    (filePath) => !normalizedProjectPath(filePath).startsWith('tests/'),
+  );
+
+  for (const filePath of projectFiles) {
+    assert.equal(
+      forbiddenExtensions.has(extname(filePath).toLowerCase()),
+      false,
+      `forbidden signing file: harmony/${normalizedProjectPath(filePath)}`,
+    );
+  }
+
+  const projectTexts = projectFiles
+    .map((filePath) => readFileSync(filePath, 'utf8'))
+    .join('\n');
+  assert.doesNotMatch(
+    projectTexts,
+    /storeFile|storePassword|keyPassword|keyPwd|keyAlias|certpath|certificate|signAlg/i,
+  );
 });

@@ -11,8 +11,8 @@
             files: [
               './obfuscation-rules.txt',
             ],
-            consumerFiles: [],
           },
+          consumerFiles: [],
         },
       },
     },
