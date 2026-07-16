@@ -121,3 +121,57 @@ test("disabled analytics acknowledges events without storing them", async () => 
   assert.equal((await handlers.analytics({ type: "page_view", visitorId: "a" })).status, 204);
   assert.equal(calls, 0);
 });
+
+test("admin handlers protect overview and health data", async () => {
+  const sessions = new Set(["valid-session"]);
+  const handlers = createWeatherHandlers({
+    weatherService: createWeatherService({ useMock: true }),
+    useMock: true,
+    health: { analyticsEnabled: true },
+    analyticsStore: {
+      overview: async (range) => ({ range, totals: { pageViews: 3 }, days: [] }),
+      health: () => ({ persistence: "disk" })
+    },
+    adminAuth: {
+      enabled: true,
+      login: async (password) => password === "secret"
+        ? { status: 200, sessionId: "valid-session" }
+        : { status: 401 },
+      verify: (sessionId) => sessions.has(sessionId),
+      logout: (sessionId) => sessions.delete(sessionId)
+    },
+    startedAt: "2026-07-16T00:00:00.000Z"
+  });
+
+  assert.equal((await handlers.adminOverview({ range: "7" }, "")).status, 401);
+  const overview = await handlers.adminOverview({ range: "30" }, "valid-session");
+  assert.equal(overview.status, 200);
+  assert.equal(overview.body.range, 30);
+  assert.equal(overview.body.totals.pageViews, 3);
+
+  const health = await handlers.adminHealth("valid-session");
+  assert.equal(health.status, 200);
+  assert.equal(health.body.analytics.persistence, "disk");
+  assert.equal(health.body.startedAt, "2026-07-16T00:00:00.000Z");
+
+  assert.equal((await handlers.adminLogout("valid-session")).status, 204);
+  assert.equal((await handlers.adminOverview({}, "valid-session")).status, 401);
+});
+
+test("admin overview stays available when anonymous analytics is disabled", async () => {
+  const handlers = createWeatherHandlers({
+    weatherService: createWeatherService({ useMock: true }),
+    useMock: true,
+    adminAuth: {
+      enabled: true,
+      verify: () => true,
+      logout: () => {},
+      login: async () => ({ status: 200, sessionId: "session" })
+    }
+  });
+
+  const overview = await handlers.adminOverview({ range: "7" }, "session");
+  assert.equal(overview.status, 200);
+  assert.equal(overview.body.totals.pageViews, 0);
+  assert.deepEqual(overview.body.days, []);
+});

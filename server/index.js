@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createWeatherApp } from "./app.js";
+import { createAdminAuth } from "./admin-auth.js";
 import { createAnalyticsStore } from "./analytics-store.js";
 import { createQWeatherClient } from "./qweather-client.js";
 import { createWeatherService } from "./weather-service.js";
@@ -21,6 +22,8 @@ const analyticsStore = analyticsEnabled ? createAnalyticsStore({
   filePath: path.join(rootDir, ".cache", "analytics.json"),
   hashSecret: analyticsHashSecret
 }) : null;
+const adminAuth = createAdminAuth({ password: process.env.ADMIN_PASSWORD });
+const startedAt = new Date().toISOString();
 const client = createQWeatherClient({
   apiKey,
   timeoutMs: process.env.QWEATHER_TIMEOUT_MS,
@@ -39,6 +42,8 @@ const app = createWeatherApp({
   },
   analyticsStore,
   analyticsEnabled,
+  adminAuth,
+  startedAt,
   lookupLocations: async (query, requestQuery) => {
     const endpoint = geoHost.includes("geoapi.qweather.com") ? "/v2/city/lookup" : "/geo/v2/city/lookup";
     return client.request({

@@ -1,5 +1,6 @@
 import express from "express";
 import path from "node:path";
+import { readSessionCookie, serializeSessionCookie } from "./admin-auth.js";
 import { findNearestMockLocation, matchesMockLocation, mockLocations } from "./mock-data.js";
 import { WeatherInputError } from "./weather-service.js";
 
@@ -11,6 +12,8 @@ export function createWeatherApp({
   lookupLocations,
   analyticsStore,
   analyticsEnabled = false,
+  adminAuth,
+  startedAt,
   productionDir
 }) {
   const app = express();
@@ -21,7 +24,9 @@ export function createWeatherApp({
     health,
     lookupLocations,
     analyticsStore,
-    analyticsEnabled
+    analyticsEnabled,
+    adminAuth,
+    startedAt
   });
   app.use(express.json({ limit: "4kb" }));
 
@@ -42,6 +47,31 @@ export function createWeatherApp({
     if (result.status === 204) return res.status(204).end();
     return res.status(result.status).json(result.body);
   });
+  app.post("/api/admin/login", async (req, res) => {
+    const result = await handlers.adminLogin(req.body, req.ip);
+    if (result.sessionId) {
+      res.setHeader("Set-Cookie", serializeSessionCookie(result.sessionId, {
+        secure: process.env.NODE_ENV === "production"
+      }));
+    }
+    return res.status(result.status).json(result.body || {});
+  });
+  app.post("/api/admin/logout", async (req, res) => {
+    const result = await handlers.adminLogout(readSessionCookie(req.headers.cookie));
+    res.setHeader("Set-Cookie", serializeSessionCookie("", {
+      secure: process.env.NODE_ENV === "production",
+      maxAge: 0
+    }));
+    return res.status(result.status).end();
+  });
+  app.get("/api/admin/overview", async (req, res) => {
+    const result = await handlers.adminOverview(req.query, readSessionCookie(req.headers.cookie));
+    return res.status(result.status).json(result.body);
+  });
+  app.get("/api/admin/health", async (req, res) => {
+    const result = await handlers.adminHealth(readSessionCookie(req.headers.cookie));
+    return res.status(result.status).json(result.body);
+  });
 
   if (productionDir) {
     app.use(express.static(productionDir));
@@ -59,6 +89,8 @@ export function createWeatherHandlers({
   lookupLocations,
   analyticsStore,
   analyticsEnabled = false,
+  adminAuth,
+  startedAt = new Date().toISOString(),
   logger = console
 }) {
   return {
@@ -99,6 +131,44 @@ export function createWeatherHandlers({
         logger.warn?.("Analytics event was dropped", error?.message);
       }
       return { status: 202, body: { accepted: true } };
+    },
+    adminLogin: async (body, clientKey) => {
+      if (!adminAuth?.enabled) return { status: 404, body: { error: { code: "ADMIN_DISABLED" } } };
+      const result = await adminAuth.login(body?.password, clientKey);
+      if (result.status !== 200) {
+        return {
+          status: result.status,
+          body: { error: { code: result.status === 429 ? "ADMIN_RATE_LIMITED" : "INVALID_ADMIN_PASSWORD" } }
+        };
+      }
+      return { status: 200, body: { ok: true }, sessionId: result.sessionId };
+    },
+    adminLogout: async (sessionId) => {
+      if (!adminAuth?.enabled) return { status: 404, body: null };
+      adminAuth.logout(sessionId);
+      return { status: 204, body: null };
+    },
+    adminOverview: async (query, sessionId) => {
+      const denied = adminAccess(adminAuth, sessionId);
+      if (denied) return denied;
+      const range = Number(query?.range) === 30 ? 30 : 7;
+      return {
+        status: 200,
+        body: analyticsStore?.overview ? await analyticsStore.overview(range) : emptyAnalyticsOverview(range)
+      };
+    },
+    adminHealth: async (sessionId) => {
+      const denied = adminAccess(adminAuth, sessionId);
+      if (denied) return denied;
+      return {
+        status: 200,
+        body: {
+          mode: useMock ? "mock" : "qweather",
+          startedAt,
+          analytics: analyticsStore?.health?.() || { persistence: "disabled" },
+          ...health
+        }
+      };
     }
   };
 }
@@ -141,6 +211,27 @@ function normalizeAnalyticsEvent(body) {
     return { type, visitorId, properties: { category: properties.category }, at: new Date().toISOString() };
   }
   return null;
+}
+
+function adminAccess(adminAuth, sessionId) {
+  if (!adminAuth?.enabled) return { status: 404, body: { error: { code: "ADMIN_DISABLED" } } };
+  if (!adminAuth.verify(sessionId)) return { status: 401, body: { error: { code: "ADMIN_UNAUTHORIZED" } } };
+  return null;
+}
+
+function emptyAnalyticsOverview(range) {
+  return {
+    range,
+    days: [],
+    totals: {
+      pageViews: 0,
+      activeVisitors: 0,
+      citySelections: 0,
+      scenes: { commute: 0, outdoor: 0, family: 0 },
+      reminders: { enabled: 0, disabled: 0, sent: 0 },
+      errors: {}
+    }
+  };
 }
 
 function expressRoute(run) {
