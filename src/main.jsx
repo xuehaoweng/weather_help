@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
   Bell,
+  Bike,
+  BriefcaseBusiness,
   CalendarClock,
   Check,
   Cloud,
@@ -321,7 +323,11 @@ function App() {
             {activeScenario?.summary || "把实时天气、分钟降雨、预警和生活指数合成一句能行动的建议。"}
           </p>
 
-          <MobileSummary now={now} insight={weather?.insight} rainText={rainText} />
+          <MobileSummary
+            now={now}
+            insight={weather?.insight ? { ...weather.insight, title: activeScenario?.headline || weather.insight.title } : null}
+            rainText={rainText}
+          />
 
           <div className="mode-tabs" aria-label="场景">
             {[
