@@ -81,7 +81,10 @@ test('HarmonyOS 6 HAP project keeps the required static contract', () => {
   assert.equal(rootPackage.description, 'Weather Pro HarmonyOS shell');
 
   const entryPackage = readJson5('entry/oh-package.json5');
-  assert.equal(entryPackage.description, 'Weather Pro entry HAP');
+  assert.equal(
+    entryPackage.description,
+    'Weather Pro HarmonyOS entry module',
+  );
   assert.equal(entryPackage.main, '');
   assert.equal(entryPackage.author, 'xuehaoweng');
 

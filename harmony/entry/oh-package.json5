@@ -1,7 +1,7 @@
 {
   name: 'entry',
   version: '0.1.0',
-  description: 'Weather Pro entry HAP',
+  description: 'Weather Pro HarmonyOS entry module',
   main: '',
   author: 'xuehaoweng',
   license: 'MIT',
