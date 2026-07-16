@@ -43,3 +43,37 @@ test("health and mock location search remain available", async () => {
   assert.equal(locations.body.locations[0].name, "上海");
   assert.equal((await handlers.locations({ q: "" })).status, 400);
 });
+
+test("mock location search resolves the nearest city from coordinates", async () => {
+  const handlers = createWeatherHandlers({
+    weatherService: createWeatherService({ useMock: true }),
+    useMock: true,
+    apiHost: "mock.test"
+  });
+
+  const nearest = await handlers.locations({ q: "121.47,31.23" });
+  assert.equal(nearest.status, 200);
+  assert.equal(nearest.body.locations[0].name, "上海");
+
+  const invalid = await handlers.locations({ q: "999,31" });
+  assert.equal(invalid.status, 400);
+  assert.equal(invalid.body.error.code, "INVALID_LOCATION");
+});
+
+test("real location search forwards coordinate strings to QWeather lookup", async () => {
+  const calls = [];
+  const handlers = createWeatherHandlers({
+    weatherService: createWeatherService({ useMock: true }),
+    useMock: false,
+    apiHost: "api.test",
+    lookupLocations: async (keyword, query) => {
+      calls.push({ keyword, query });
+      return { location: [{ id: "101020100", name: "上海" }] };
+    }
+  });
+
+  const result = await handlers.locations({ q: "121.47,31.23" });
+  assert.equal(result.status, 200);
+  assert.equal(result.body.locations[0].name, "上海");
+  assert.equal(calls[0].keyword, "121.47,31.23");
+});

@@ -1,6 +1,6 @@
 import express from "express";
 import path from "node:path";
-import { matchesMockLocation, mockLocations } from "./mock-data.js";
+import { findNearestMockLocation, matchesMockLocation, mockLocations } from "./mock-data.js";
 import { WeatherInputError } from "./weather-service.js";
 
 export function createWeatherApp({
@@ -50,11 +50,15 @@ export function createWeatherHandlers({
     locations: (query) => safeResult(async () => {
       const keyword = String(query.q || "").trim();
       if (!keyword) throw new WeatherInputError("请输入城市、区县或经纬度");
+      const coordinates = parseCoordinateQuery(keyword);
       if (useMock) {
+        const locations = coordinates
+          ? [findNearestMockLocation(coordinates.lon, coordinates.lat)].filter(Boolean)
+          : mockLocations.filter((item) => matchesMockLocation(item, keyword)).slice(0, 8);
         return {
           status: 200,
           body: {
-            locations: mockLocations.filter((item) => matchesMockLocation(item, keyword)).slice(0, 8),
+            locations,
             refer: { sources: ["Mock"], license: ["MIT"] }
           }
         };
@@ -63,6 +67,19 @@ export function createWeatherHandlers({
       return { status: 200, body: { locations: data.location || [], refer: data.refer || null } };
     })
   };
+}
+
+function parseCoordinateQuery(value) {
+  if (!value.includes(",")) return null;
+  const parts = value.split(",").map((item) => item.trim());
+  if (parts.length !== 2 || parts.some((item) => item === "")) {
+    throw new WeatherInputError("经纬度格式无效");
+  }
+  const [lon, lat] = parts.map(Number);
+  if (!Number.isFinite(lon) || !Number.isFinite(lat) || lon < -180 || lon > 180 || lat < -90 || lat > 90) {
+    throw new WeatherInputError("经纬度超出有效范围");
+  }
+  return { lon, lat };
 }
 
 function expressRoute(run) {

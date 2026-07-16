@@ -124,6 +124,14 @@ export function matchesMockLocation(item, query) {
     .some((value) => String(value || "").toLowerCase().includes(normalized));
 }
 
+export function findNearestMockLocation(lon, lat) {
+  return mockLocations.reduce((nearest, item) => {
+    const distance = (Number(item.lon) - lon) ** 2 + (Number(item.lat) - lat) ** 2;
+    if (!nearest || distance < nearest.distance) return { item, distance };
+    return nearest;
+  }, null)?.item || null;
+}
+
 function city(name, pinyin, id, lat, lon, adm2, adm1, rank) {
   return {
     name,
