@@ -236,6 +236,19 @@ test('HarmonyOS app URL policy only trusts the configured HTTPS origin', () => {
     join(harmonyRoot, 'entry/src/main/ets/config/AppConfig.ets'),
     'utf8',
   );
+  const executableAppConfig = appConfig
+    .replace(/^export /gm, '')
+    .replace(/: string\b/g, '')
+    .replace(/\): boolean\b/g, ')');
+  const {
+    APP_URL,
+    isTrustedAppUrl,
+    isExternalHttpsUrl,
+  } = new Function(
+    `"use strict";
+${executableAppConfig}
+return { APP_URL, isTrustedAppUrl, isExternalHttpsUrl };`,
+  )();
 
   assert.match(
     appConfig,
@@ -250,8 +263,48 @@ test('HarmonyOS app URL policy only trusts the configured HTTPS origin', () => {
     /return url\.startsWith\('https:\/\/'\) && !isTrustedAppUrl\(url\);/,
   );
   assert.doesNotMatch(appConfig, /http:\/\/43\.129\.249\.56/);
-  assert.doesNotMatch(
-    appConfig,
-    /sslError|handleConfirm|ignoreSsl/i,
-  );
+
+  assert.equal(APP_URL, 'https://43.129.249.56/');
+
+  const trustedUrlCases = [
+    [APP_URL, true],
+    [`${APP_URL}forecast`, true],
+    ['https://43.129.249.56.evil/', false],
+    ['https://43.129.249.56@evil.example/', false],
+    ['http://43.129.249.56/', false],
+    ['javascript:alert(1)', false],
+    ['data:text/html,unsafe', false],
+    ['file:///etc/passwd', false],
+  ];
+  for (const [url, expected] of trustedUrlCases) {
+    assert.equal(isTrustedAppUrl(url), expected, `trusted policy for ${url}`);
+  }
+
+  const externalUrlCases = [
+    ['https://example.com/', true],
+    [APP_URL, false],
+    [`${APP_URL}forecast`, false],
+    ['http://example.com/', false],
+    ['javascript:alert(1)', false],
+    ['data:text/html,unsafe', false],
+    ['file:///etc/passwd', false],
+  ];
+  for (const [url, expected] of externalUrlCases) {
+    assert.equal(
+      isExternalHttpsUrl(url),
+      expected,
+      `external HTTPS policy for ${url}`,
+    );
+  }
+
+  const productionEtsFiles = listProjectFiles(
+    join(harmonyRoot, 'entry/src/main/ets'),
+  ).filter((filePath) => extname(filePath) === '.ets');
+  for (const filePath of productionEtsFiles) {
+    assert.doesNotMatch(
+      readFileSync(filePath, 'utf8'),
+      /sslError|handleConfirm|ignoreSsl/i,
+      `SSL bypass marker in harmony/${normalizedProjectPath(filePath)}`,
+    );
+  }
 });
