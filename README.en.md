@@ -105,15 +105,18 @@ Analytics and the admin dashboard are disabled by default. Add the following to 
 ```bash
 ANALYTICS_ENABLED=true
 ANALYTICS_HASH_SECRET=replace-with-a-long-random-secret
+ADMIN_USERNAME=admin
 ADMIN_PASSWORD=replace-with-a-strong-admin-password
 ```
 
 Restart and open [http://localhost:5177/admin](http://localhost:5177/admin), or `/admin` on the production origin.
 
+For local preview you can use `admin/admin`. Change the password before any public deployment. The username defaults to `admin` and can be changed with `ADMIN_USERNAME`.
+
 The dashboard shows 7/30-day page views, anonymous daily visitors, location selections, scenario usage, reminders, client errors, and service health. It retains only 30 days of daily aggregates and does not store IP addresses, User-Agent strings, search terms, precise locations, or visitor-level records.
 
 > [!IMPORTANT]
-> The dashboard currently targets a single self-hosted instance. Use HTTPS, a strong independent password, and a random hash secret in production.
+> The dashboard currently targets a single self-hosted instance. Use HTTPS, replace the example credentials, and configure a strong independent password plus a random hash secret in production.
 
 ## Architecture
 

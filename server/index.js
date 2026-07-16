@@ -22,7 +22,10 @@ const analyticsStore = analyticsEnabled ? createAnalyticsStore({
   filePath: path.join(rootDir, ".cache", "analytics.json"),
   hashSecret: analyticsHashSecret
 }) : null;
-const adminAuth = createAdminAuth({ password: process.env.ADMIN_PASSWORD });
+const adminAuth = createAdminAuth({
+  username: process.env.ADMIN_USERNAME || "admin",
+  password: process.env.ADMIN_PASSWORD
+});
 const startedAt = new Date().toISOString();
 const client = createQWeatherClient({
   apiKey,

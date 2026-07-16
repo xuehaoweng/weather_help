@@ -17,6 +17,7 @@ export function AdminApp({
   initialHealth = null
 } = {}) {
   const [status, setStatus] = useState(initialStatus);
+  const [username, setUsername] = useState("admin");
   const [password, setPassword] = useState("");
   const [overview, setOverview] = useState(initialOverview);
   const [health, setHealth] = useState(initialHealth);
@@ -79,7 +80,7 @@ export function AdminApp({
     const response = await fetch("/api/admin/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ password })
+      body: JSON.stringify({ username, password })
     });
     setPassword("");
     if (response.status === 404) {
@@ -91,7 +92,7 @@ export function AdminApp({
       return;
     }
     if (!response.ok) {
-      setError("管理员密码不正确。");
+      setError("管理员账号或密码不正确。");
       return;
     }
     await loadDashboard(range);
@@ -117,10 +118,21 @@ export function AdminApp({
     return h(AdminShell, null,
       h("form", { className: "admin-login-card", onSubmit: login },
         h("h2", null, "管理员登录"),
-        h("p", null, "密码只用于当前登录请求，不会保存在浏览器中。"),
+        h("p", null, "账号和密码只用于当前登录请求，不会保存在浏览器中。"),
+        h("label", { htmlFor: "admin-username" }, "管理员账号"),
+        h("input", {
+          id: "admin-username",
+          name: "username",
+          type: "text",
+          value: username,
+          onChange: (event) => setUsername(event.target.value),
+          autoComplete: "username",
+          required: true
+        }),
         h("label", { htmlFor: "admin-password" }, "管理员密码"),
         h("input", {
           id: "admin-password",
+          name: "password",
           type: "password",
           value: password,
           onChange: (event) => setPassword(event.target.value),

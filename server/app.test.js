@@ -134,7 +134,7 @@ test("admin handlers protect overview and health data", async () => {
     },
     adminAuth: {
       enabled: true,
-      login: async (password) => password === "secret"
+      login: async ({ username, password }) => username === "admin" && password === "secret"
         ? { status: 200, sessionId: "valid-session" }
         : { status: 401 },
       verify: (sessionId) => sessions.has(sessionId),
@@ -144,6 +144,8 @@ test("admin handlers protect overview and health data", async () => {
   });
 
   assert.equal((await handlers.adminOverview({ range: "7" }, "")).status, 401);
+  assert.equal((await handlers.adminLogin({ username: "other", password: "secret" }, "client")).status, 401);
+  assert.equal((await handlers.adminLogin({ username: "admin", password: "secret" }, "client")).status, 200);
   const overview = await handlers.adminOverview({ range: "30" }, "valid-session");
   assert.equal(overview.status, 200);
   assert.equal(overview.body.range, 30);

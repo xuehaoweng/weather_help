@@ -5,6 +5,7 @@ const scrypt = promisify(crypto.scrypt);
 const COOKIE_NAME = "weather_admin";
 
 export function createAdminAuth({
+  username = "admin",
   password,
   now = Date.now,
   randomBytes = crypto.randomBytes,
@@ -12,21 +13,29 @@ export function createAdminAuth({
   maxFailures = 5,
   blockMs = 15 * 60 * 1000
 } = {}) {
-  const enabled = Boolean(password);
+  const enabled = Boolean(username && password);
   const sessions = new Map();
   const failures = new Map();
-  const salt = "weather-pro-admin-v1";
-  const expectedPromise = enabled ? derive(password, salt) : null;
+  const usernameSalt = "weather-pro-admin-username-v1";
+  const passwordSalt = "weather-pro-admin-password-v1";
+  const expectedUsernamePromise = enabled ? derive(username, usernameSalt) : null;
+  const expectedPasswordPromise = enabled ? derive(password, passwordSalt) : null;
 
-  async function login(candidate, clientKey = "global") {
+  async function login(credentials, clientKey = "global") {
     if (!enabled) return { status: 404 };
     const current = now();
     const failure = failures.get(clientKey);
     if (failure?.blockedUntil > current) return { status: 429 };
 
-    const expected = await expectedPromise;
-    const actual = await derive(String(candidate || ""), salt);
-    if (!crypto.timingSafeEqual(expected, actual)) {
+    const [expectedUsername, expectedPassword, actualUsername, actualPassword] = await Promise.all([
+      expectedUsernamePromise,
+      expectedPasswordPromise,
+      derive(String(credentials?.username || ""), usernameSalt),
+      derive(String(credentials?.password || ""), passwordSalt)
+    ]);
+    const validUsername = crypto.timingSafeEqual(expectedUsername, actualUsername);
+    const validPassword = crypto.timingSafeEqual(expectedPassword, actualPassword);
+    if (!validUsername || !validPassword) {
       const count = (failure?.count || 0) + 1;
       const blocked = count >= maxFailures;
       failures.set(clientKey, {

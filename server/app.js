@@ -138,11 +138,14 @@ export function createWeatherHandlers({
     },
     adminLogin: async (body, clientKey) => {
       if (!adminAuth?.enabled) return { status: 404, body: { error: { code: "ADMIN_DISABLED" } } };
-      const result = await adminAuth.login(body?.password, clientKey);
+      const result = await adminAuth.login({
+        username: body?.username,
+        password: body?.password
+      }, clientKey);
       if (result.status !== 200) {
         return {
           status: result.status,
-          body: { error: { code: result.status === 429 ? "ADMIN_RATE_LIMITED" : "INVALID_ADMIN_PASSWORD" } }
+          body: { error: { code: result.status === 429 ? "ADMIN_RATE_LIMITED" : "INVALID_ADMIN_CREDENTIALS" } }
         };
       }
       return { status: 200, body: { ok: true }, sessionId: result.sessionId };

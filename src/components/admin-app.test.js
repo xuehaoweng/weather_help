@@ -6,10 +6,12 @@ import { AdminApp } from "../AdminApp.js";
 
 const h = React.createElement;
 
-test("admin app renders a password-only login without persisting credentials", () => {
+test("admin app renders username and password login without persisting credentials", () => {
   const html = renderToStaticMarkup(h(AdminApp, { initialStatus: "unauthenticated" }));
 
   assert.match(html, /Weather Pro 管理后台/);
+  assert.match(html, /name="username"/);
+  assert.match(html, /管理员账号/);
   assert.match(html, /type="password"/);
   assert.match(html, /管理员密码/);
   assert.doesNotMatch(html, /记住密码/);

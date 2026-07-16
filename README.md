@@ -111,15 +111,18 @@ docker compose up --build
 ```bash
 ANALYTICS_ENABLED=true
 ANALYTICS_HASH_SECRET=replace-with-a-long-random-secret
+ADMIN_USERNAME=admin
 ADMIN_PASSWORD=replace-with-a-strong-admin-password
 ```
 
 重新启动后访问 [http://localhost:5177/admin](http://localhost:5177/admin)，生产环境访问同源 `/admin`。
 
+本机预览可以使用 `admin/admin`；公开部署前必须更换密码。账号默认是 `admin`，也可以通过 `ADMIN_USERNAME` 修改。
+
 后台提供最近 7/30 天访问量、匿名日活、城市选择次数、场景分布、提醒漏斗、客户端错误和服务健康。只保存最近 30 天每日聚合数据，不保存 IP、User-Agent、城市搜索词、精确位置或访客明细。
 
 > [!IMPORTANT]
-> 管理后台当前面向单实例自托管。生产环境必须使用 HTTPS，并设置独立的强密码和随机哈希密钥。
+> 管理后台当前面向单实例自托管。生产环境必须使用 HTTPS，并更换示例账号密码，同时设置独立的强密码和随机哈希密钥。
 
 ## 工作原理
 

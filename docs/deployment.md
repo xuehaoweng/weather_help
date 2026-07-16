@@ -35,6 +35,7 @@ QWEATHER_GEO_HOST=geoapi.qweather.com
 PORT=8787
 ANALYTICS_ENABLED=false
 ANALYTICS_HASH_SECRET=
+ADMIN_USERNAME=admin
 ADMIN_PASSWORD=
 ```
 
@@ -47,6 +48,7 @@ Set all three values to enable the local aggregate store and `/admin`:
 ```bash
 ANALYTICS_ENABLED=true
 ANALYTICS_HASH_SECRET=generate-a-long-random-secret
+ADMIN_USERNAME=admin
 ADMIN_PASSWORD=use-a-strong-independent-password
 ```
 
@@ -57,6 +59,6 @@ ADMIN_PASSWORD=use-a-strong-independent-password
 - A service restart signs all administrators out.
 - Production cookies use `Secure`, so production traffic must use HTTPS.
 
-If `ADMIN_PASSWORD` is empty, admin data endpoints are hidden. If analytics is disabled or the hash secret is empty, the dashboard remains available with zero aggregate metrics when an administrator password is configured.
+If `ADMIN_PASSWORD` is empty, admin data endpoints are hidden. `ADMIN_USERNAME` defaults to `admin` when a password is configured. If analytics is disabled or the hash secret is empty, the dashboard remains available with zero aggregate metrics when administrator credentials are configured.
 
 Back up `.cache/analytics.json` only if aggregate history matters. Never publish `.env` or copy its secrets into an image.

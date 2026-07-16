@@ -196,10 +196,11 @@ git commit -m "feat: add a lightweight weather admin dashboard"
 ```bash
 ANALYTICS_ENABLED=true
 ANALYTICS_HASH_SECRET=replace-with-a-random-secret
+ADMIN_USERNAME=admin
 ADMIN_PASSWORD=
 ```
 
-未配置 `ADMIN_PASSWORD` 时后台关闭；未配置哈希密钥时统计关闭并记录警告。
+未配置 `ADMIN_PASSWORD` 时后台关闭；`ADMIN_USERNAME` 未配置时默认使用 `admin`；未配置哈希密钥时统计关闭并记录警告。
 
 - [x] **步骤 2：记录隐私边界**
 

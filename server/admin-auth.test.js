@@ -13,16 +13,18 @@ test("is disabled when no administrator password is configured", async () => {
   assert.equal(auth.verify("session"), false);
 });
 
-test("creates and verifies a short-lived session for the correct password", async () => {
+test("creates and verifies a short-lived session for the correct username and password", async () => {
   let current = 1_000;
   const auth = createAdminAuth({
+    username: "admin",
     password: "correct horse",
     now: () => current,
     randomBytes: () => Buffer.from("session-id")
   });
 
-  assert.equal((await auth.login("wrong", "127.0.0.1")).status, 401);
-  const login = await auth.login("correct horse", "127.0.0.1");
+  assert.equal((await auth.login({ username: "other", password: "correct horse" }, "127.0.0.1")).status, 401);
+  assert.equal((await auth.login({ username: "admin", password: "wrong" }, "127.0.0.1")).status, 401);
+  const login = await auth.login({ username: "admin", password: "correct horse" }, "127.0.0.1");
   assert.equal(login.status, 200);
   assert.equal(auth.verify(login.sessionId), true);
 
@@ -39,15 +41,15 @@ test("rate limits repeated login failures", async () => {
     now: () => 1_000
   });
 
-  assert.equal((await auth.login("bad", "client-a")).status, 401);
-  assert.equal((await auth.login("bad", "client-a")).status, 401);
-  assert.equal((await auth.login("bad", "client-a")).status, 429);
-  assert.equal((await auth.login("secret", "client-a")).status, 429);
+  assert.equal((await auth.login({ username: "admin", password: "bad" }, "client-a")).status, 401);
+  assert.equal((await auth.login({ username: "admin", password: "bad" }, "client-a")).status, 401);
+  assert.equal((await auth.login({ username: "admin", password: "bad" }, "client-a")).status, 429);
+  assert.equal((await auth.login({ username: "admin", password: "secret" }, "client-a")).status, 429);
 });
 
 test("logout invalidates the session", async () => {
   const auth = createAdminAuth({ password: "secret" });
-  const login = await auth.login("secret");
+  const login = await auth.login({ username: "admin", password: "secret" });
   assert.equal(auth.verify(login.sessionId), true);
   auth.logout(login.sessionId);
   assert.equal(auth.verify(login.sessionId), false);

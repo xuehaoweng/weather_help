@@ -8,8 +8,9 @@ The app returns only boolean credential status from `/api/health`.
 
 ## Administrator Dashboard
 
-- Keep `ADMIN_PASSWORD` and `ANALYTICS_HASH_SECRET` out of source control.
+- Keep `ADMIN_USERNAME`, `ADMIN_PASSWORD`, and `ANALYTICS_HASH_SECRET` out of source control.
 - Use different, randomly generated values for the administrator password and hash secret.
+- The documented `admin/admin` credentials are only for local preview. Never expose a public deployment with them.
 - Serve production deployments over HTTPS so the admin session cookie is marked `Secure`.
 - The dashboard uses an in-memory session with a 30-minute idle timeout and login rate limiting.
 - Anonymous analytics does not persist IP addresses, search terms, precise coordinates, User-Agent strings, or raw installation identifiers.
