@@ -889,7 +889,7 @@ git add docs/superpowers/plans/2026-07-16-harmonyos-hap.md
 git commit -m "docs: complete HarmonyOS HAP implementation plan"
 ```
 
-- [ ] **步骤 7：推送隔离分支**
+- [x] **步骤 7：推送隔离分支**
 
 ```bash
 git push origin hap
