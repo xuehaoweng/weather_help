@@ -44,7 +44,7 @@
 - 创建：`harmony/tests/project.test.mjs`
 - 修改：`package.json`
 
-- [ ] **步骤 1：编写失败的工程结构测试**
+- [x] **步骤 1：编写失败的工程结构测试**
 
 创建 `harmony/tests/project.test.mjs`：
 
@@ -90,7 +90,7 @@ test("HarmonyOS project declares an API 20 Stage HAP without signing material", 
 });
 ```
 
-- [ ] **步骤 2：增加测试命令**
+- [x] **步骤 2：增加测试命令**
 
 在 `package.json` 的 `scripts` 中加入：
 
@@ -98,7 +98,7 @@ test("HarmonyOS project declares an API 20 Stage HAP without signing material", 
 "test:harmony": "node --test harmony/tests/*.test.mjs"
 ```
 
-- [ ] **步骤 3：运行测试确认失败**
+- [x] **步骤 3：运行测试确认失败**
 
 运行：
 
@@ -128,7 +128,7 @@ npm run test:harmony
 - 创建：`harmony/entry/src/main/resources/base/profile/main_pages.json`
 - 创建：`harmony/entry/src/main/resources/base/media/app_icon.svg`
 
-- [ ] **步骤 1：创建根构建配置**
+- [x] **步骤 1：创建根构建配置**
 
 `harmony/build-profile.json5`：
 
@@ -210,7 +210,7 @@ export default {
 }
 ```
 
-- [ ] **步骤 2：创建应用范围配置**
+- [x] **步骤 2：创建应用范围配置**
 
 `harmony/AppScope/app.json5`：
 
@@ -251,7 +251,7 @@ export default {
 </svg>
 ```
 
-- [ ] **步骤 3：创建 HAP 模块配置**
+- [x] **步骤 3：创建 HAP 模块配置**
 
 `harmony/entry/hvigorfile.ts`：
 
@@ -312,7 +312,7 @@ export default {
 # Release obfuscation is intentionally disabled for the install-test HAP.
 ```
 
-- [ ] **步骤 4：声明 Ability、Phone 和网络权限**
+- [x] **步骤 4：声明 Ability、Phone 和网络权限**
 
 `harmony/entry/src/main/module.json5`：
 
@@ -396,7 +396,7 @@ export default {
 
 复制步骤 2 的 SVG 到 `harmony/entry/src/main/resources/base/media/app_icon.svg`。
 
-- [ ] **步骤 5：运行结构测试**
+- [x] **步骤 5：运行结构测试**
 
 运行：
 
@@ -404,9 +404,9 @@ export default {
 npm run test:harmony
 ```
 
-预期：PASS，1 个测试通过。
+预期：测试命令退出 0，全部契约通过。
 
-- [ ] **步骤 6：提交工程骨架**
+- [x] **步骤 6：提交工程骨架**
 
 ```bash
 git add package.json harmony
@@ -419,7 +419,7 @@ git commit -m "feat: scaffold HarmonyOS 6 HAP project"
 - 修改：`harmony/tests/project.test.mjs`
 - 创建：`harmony/entry/src/main/ets/config/AppConfig.ets`
 
-- [ ] **步骤 1：追加失败的 URL 安全测试**
+- [x] **步骤 1：追加失败的 URL 安全测试**
 
 在 `harmony/tests/project.test.mjs` 追加：
 
@@ -435,7 +435,7 @@ test("ArkWeb URL policy allows only the Weather Pro HTTPS origin", () => {
 });
 ```
 
-- [ ] **步骤 2：运行测试确认失败**
+- [x] **步骤 2：运行测试确认失败**
 
 运行：
 
@@ -445,7 +445,7 @@ npm run test:harmony
 
 预期：FAIL，缺少 `entry/src/main/ets/config/AppConfig.ets`。
 
-- [ ] **步骤 3：实现最小 URL 策略**
+- [x] **步骤 3：实现最小 URL 策略**
 
 创建 `harmony/entry/src/main/ets/config/AppConfig.ets`：
 
@@ -461,7 +461,7 @@ export function isExternalHttpsUrl(url: string): boolean {
 }
 ```
 
-- [ ] **步骤 4：运行测试验证通过**
+- [x] **步骤 4：运行测试验证通过**
 
 运行：
 
@@ -469,9 +469,9 @@ export function isExternalHttpsUrl(url: string): boolean {
 npm run test:harmony
 ```
 
-预期：PASS，2 个测试通过。
+预期：测试命令退出 0，全部契约通过。
 
-- [ ] **步骤 5：提交 URL 策略**
+- [x] **步骤 5：提交 URL 策略**
 
 ```bash
 git add harmony/tests/project.test.mjs harmony/entry/src/main/ets/config/AppConfig.ets
@@ -485,7 +485,7 @@ git commit -m "feat: restrict HarmonyOS web navigation"
 - 创建：`harmony/entry/src/main/ets/entryability/EntryAbility.ets`
 - 创建：`harmony/entry/src/main/ets/pages/Index.ets`
 
-- [ ] **步骤 1：追加失败的 ArkWeb 行为测试**
+- [x] **步骤 1：追加失败的 ArkWeb 行为测试**
 
 在 `harmony/tests/project.test.mjs` 追加：
 
@@ -512,7 +512,7 @@ test("ArkWeb shell exposes loading, retry, back navigation, and safe external li
 });
 ```
 
-- [ ] **步骤 2：运行测试确认失败**
+- [x] **步骤 2：运行测试确认失败**
 
 运行：
 
@@ -522,7 +522,7 @@ npm run test:harmony
 
 预期：FAIL，缺少 `EntryAbility.ets` 或 `Index.ets`。
 
-- [ ] **步骤 3：实现 EntryAbility**
+- [x] **步骤 3：实现 EntryAbility**
 
 创建 `harmony/entry/src/main/ets/entryability/EntryAbility.ets`：
 
@@ -548,7 +548,7 @@ export default class EntryAbility extends UIAbility {
 }
 ```
 
-- [ ] **步骤 4：实现 ArkWeb 页面**
+- [x] **步骤 4：实现 ArkWeb 页面**
 
 创建 `harmony/entry/src/main/ets/pages/Index.ets`：
 
@@ -666,7 +666,7 @@ struct Index {
 }
 ```
 
-- [ ] **步骤 5：运行静态契约测试**
+- [x] **步骤 5：运行静态契约测试**
 
 运行：
 
@@ -674,9 +674,9 @@ struct Index {
 npm run test:harmony
 ```
 
-预期：PASS，3 个测试通过。
+预期：测试命令退出 0，全部契约通过。
 
-- [ ] **步骤 6：提交 ArkWeb 壳**
+- [x] **步骤 6：提交 ArkWeb 壳**
 
 ```bash
 git add harmony/tests/project.test.mjs harmony/entry/src/main/ets
@@ -690,7 +690,7 @@ git commit -m "feat: add HarmonyOS ArkWeb shell"
 - 修改：`harmony/tests/project.test.mjs`
 - 创建：`harmony/README.md`
 
-- [ ] **步骤 1：追加失败的仓库安全测试**
+- [x] **步骤 1：追加失败的仓库安全测试**
 
 在 `harmony/tests/project.test.mjs` 追加：
 
@@ -719,7 +719,7 @@ test("repository ignores HarmonyOS build and signing artifacts", () => {
 });
 ```
 
-- [ ] **步骤 2：运行测试确认失败**
+- [x] **步骤 2：运行测试确认失败**
 
 运行：
 
@@ -729,7 +729,7 @@ npm run test:harmony
 
 预期：FAIL，`.gitignore` 缺少 HarmonyOS 规则或 `harmony/README.md` 不存在。
 
-- [ ] **步骤 3：增加忽略规则**
+- [x] **步骤 3：增加忽略规则**
 
 在 `.gitignore` 追加：
 
@@ -749,7 +749,7 @@ harmony/**/*.cer
 harmony/**/*.profile
 ```
 
-- [ ] **步骤 4：创建 DevEco README**
+- [x] **步骤 4：创建 DevEco README**
 
 创建 `harmony/README.md`，包含以下完整流程：
 
@@ -805,7 +805,7 @@ harmony/**/*.profile
 - 页面部分数据缺失：后台采用渐进加载，上游单项超时会显示部分数据，可稍后刷新。
 ```
 
-- [ ] **步骤 5：运行测试验证通过**
+- [x] **步骤 5：运行测试验证通过**
 
 运行：
 
@@ -813,9 +813,9 @@ harmony/**/*.profile
 npm run test:harmony
 ```
 
-预期：PASS，4 个测试通过。
+预期：测试命令退出 0，全部契约通过。
 
-- [ ] **步骤 6：提交安全规则和文档**
+- [x] **步骤 6：提交安全规则和文档**
 
 ```bash
 git add .gitignore harmony/README.md harmony/tests/project.test.mjs
@@ -827,7 +827,7 @@ git commit -m "docs: explain HarmonyOS signing and install flow"
 **文件：**
 - 修改：`docs/superpowers/plans/2026-07-16-harmonyos-hap.md`
 
-- [ ] **步骤 1：运行 Web 回归测试**
+- [x] **步骤 1：运行 Web 回归测试**
 
 运行：
 
@@ -835,9 +835,9 @@ git commit -m "docs: explain HarmonyOS signing and install flow"
 npm test
 ```
 
-预期：15 个测试文件通过，0 个失败。
+预期：测试命令退出 0，全部 Web 契约通过。
 
-- [ ] **步骤 2：运行 HarmonyOS 静态契约测试**
+- [x] **步骤 2：运行 HarmonyOS 静态契约测试**
 
 运行：
 
@@ -845,9 +845,9 @@ npm test
 npm run test:harmony
 ```
 
-预期：4 个测试通过，0 个失败。
+预期：测试命令退出 0，全部 HarmonyOS 契约通过。
 
-- [ ] **步骤 3：验证 Web 生产构建**
+- [x] **步骤 3：验证 Web 生产构建**
 
 运行：
 
@@ -868,7 +868,7 @@ curl -fsS https://43.129.249.56/api/health
 
 预期：首页返回 `HTTP/2 200`；健康接口返回 `"mode":"qweather"` 且凭据状态为 `true`。
 
-- [ ] **步骤 5：检查仓库安全和格式**
+- [x] **步骤 5：检查仓库安全和格式**
 
 运行：
 
@@ -880,7 +880,7 @@ git ls-files harmony | rg '\.(p12|p7b|cer|profile|hap|app)$'
 
 预期：`git diff --check` 无输出；只显示本计划内变更；签名和产物扫描无输出。
 
-- [ ] **步骤 6：更新计划复选框并提交**
+- [x] **步骤 6：更新计划复选框并提交**
 
 将已完成步骤改为 `[x]`，然后运行：
 
