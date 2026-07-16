@@ -4,6 +4,7 @@ import path from "node:path";
 const CACHE_SCHEMA_VERSION = 1;
 const DEFAULT_TIMEOUT_MS = 4000;
 const RETRY_DELAYS_MS = [150, 400];
+const STALE_WEATHER_DATA = Symbol.for("weather-pro.stale-data");
 
 export class QWeatherError extends Error {
   constructor(code, message, cause) {
@@ -11,6 +12,10 @@ export class QWeatherError extends Error {
     this.name = "QWeatherError";
     this.code = code;
   }
+}
+
+export function isStaleWeatherData(value) {
+  return Boolean(value?.[STALE_WEATHER_DATA]);
 }
 
 export function createQWeatherClient(options = {}) {
@@ -37,7 +42,7 @@ export function createQWeatherClient(options = {}) {
 
   const ready = restoreDiskCache();
 
-  async function request({ host, endpoint, params = {}, ttlMs }) {
+  async function request({ host, endpoint, params = {}, ttlMs, staleIfErrorMs }) {
     if (!apiKey) throw new QWeatherError("MISSING_API_KEY", "Weather service is not configured");
     await ready;
 
@@ -46,15 +51,23 @@ export function createQWeatherClient(options = {}) {
     if (isFresh(cached, ttlMs, now())) return cached.data;
     if (inflight.has(url)) return inflight.get(url);
 
-    const pending = fetchAndCache(url).finally(() => {
+    const pending = fetchAndCache(url, cached, ttlMs, staleIfErrorMs).finally(() => {
       if (inflight.get(url) === pending) inflight.delete(url);
     });
     inflight.set(url, pending);
     return pending;
   }
 
-  async function fetchAndCache(url) {
-    const data = await fetchWithRetry(url);
+  async function fetchAndCache(url, cached, ttlMs, staleIfErrorMs) {
+    let data;
+    try {
+      data = await fetchWithRetry(url);
+    } catch (error) {
+      if (isRecoverable(error) && isUsableStale(cached, ttlMs, staleIfErrorMs, now())) {
+        return markStale(cached.data);
+      }
+      throw error;
+    }
     memory.set(url, { cachedAt: now(), data });
     version += 1;
     schedulePersist();
@@ -223,6 +236,20 @@ function buildUrl(host, endpoint, params) {
 
 function isFresh(entry, ttlMs, currentTime) {
   return Boolean(entry) && Number.isFinite(ttlMs) && ttlMs > 0 && currentTime - entry.cachedAt < ttlMs;
+}
+
+function isUsableStale(entry, ttlMs, staleIfErrorMs, currentTime) {
+  return Boolean(entry) &&
+    Number.isFinite(ttlMs) &&
+    Number.isFinite(staleIfErrorMs) &&
+    staleIfErrorMs > ttlMs &&
+    currentTime - entry.cachedAt <= staleIfErrorMs;
+}
+
+function markStale(data) {
+  const value = Array.isArray(data) ? [...data] : { ...data };
+  Object.defineProperty(value, STALE_WEATHER_DATA, { value: true });
+  return value;
 }
 
 function serializeCache(memory) {

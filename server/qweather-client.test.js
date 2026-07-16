@@ -75,6 +75,57 @@ test("does not retry invalid upstream payloads", async (t) => {
   await client.close();
 });
 
+test("returns marked stale data inside the stale-if-error window", async (t) => {
+  const cachePath = await temporaryCache(t);
+  let current = 10_000;
+  let offline = false;
+  const client = createQWeatherClient({
+    apiKey: "secret",
+    cachePath,
+    now: () => current,
+    sleepImpl: async () => {},
+    fetchImpl: async () => {
+      if (offline) throw new Error("offline");
+      return jsonResponse({ code: "200", marker: "cached" });
+    }
+  });
+  const staleSpec = { ...spec, ttlMs: 1_000, staleIfErrorMs: 30_000 };
+  await client.request(staleSpec);
+  current = 12_000;
+  offline = true;
+
+  const result = await client.request(staleSpec);
+  assert.equal(result.marker, "cached");
+  assert.equal(result[Symbol.for("weather-pro.stale-data")], true);
+  await client.close();
+});
+
+test("rejects stale data outside the stale-if-error window", async (t) => {
+  const cachePath = await temporaryCache(t);
+  let current = 10_000;
+  let offline = false;
+  const client = createQWeatherClient({
+    apiKey: "secret",
+    cachePath,
+    now: () => current,
+    sleepImpl: async () => {},
+    fetchImpl: async () => {
+      if (offline) throw new Error("offline");
+      return jsonResponse({ code: "200", marker: "expired" });
+    }
+  });
+  const staleSpec = { ...spec, ttlMs: 1_000, staleIfErrorMs: 30_000 };
+  await client.request(staleSpec);
+  current = 41_000;
+  offline = true;
+
+  await assert.rejects(
+    client.request(staleSpec),
+    (error) => error instanceof QWeatherError && error.code === "UPSTREAM_NETWORK_ERROR"
+  );
+  await client.close();
+});
+
 test("clears a rejected inflight request so the next call retries", async (t) => {
   const cachePath = await temporaryCache(t);
   let calls = 0;

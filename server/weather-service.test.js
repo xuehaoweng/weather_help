@@ -67,6 +67,25 @@ test("partial upstream failure returns 200 with a structured public error", asyn
   assert.equal(result.body.insight.isPartial, true);
 });
 
+test("exposes stale realtime weather without marking warnings stale", async () => {
+  const calls = [];
+  const client = {
+    async request(spec) {
+      calls.push(spec);
+      const payload = payloadFor(spec.endpoint);
+      if (spec.endpoint === "/v7/weather/now") {
+        Object.defineProperty(payload, Symbol.for("weather-pro.stale-data"), { value: true });
+      }
+      return payload;
+    }
+  };
+  const result = await createWeatherService({ client, apiHost: "api.test" }).getCore(query);
+
+  assert.deepEqual(result.body.staleSources, ["now"]);
+  assert.equal(calls.find((item) => item.endpoint === "/v7/weather/now").staleIfErrorMs, 30 * 60 * 1000);
+  assert.equal(calls.find((item) => item.endpoint === "/v7/warning/now").staleIfErrorMs, undefined);
+});
+
 test("all failures return mode-specific 502 payloads", async () => {
   const service = createWeatherService({ client: failingClient(), apiHost: "api.test" });
   const cases = [

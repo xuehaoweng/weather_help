@@ -1,9 +1,9 @@
-import { QWeatherError } from "./qweather-client.js";
+import { isStaleWeatherData, QWeatherError } from "./qweather-client.js";
 import { mockWeatherPayload } from "./mock-data.js";
 import { buildWeatherInsight } from "../shared/advice-engine.js";
 
 const CORE_SPECS = [
-  { source: "now", endpoint: "/v7/weather/now", ttlMs: 8 * 60 * 1000 },
+  { source: "now", endpoint: "/v7/weather/now", ttlMs: 8 * 60 * 1000, staleIfErrorMs: 30 * 60 * 1000 },
   { source: "daily", endpoint: "/v7/weather/7d", ttlMs: 45 * 60 * 1000 },
   { source: "hourly", endpoint: "/v7/weather/24h", ttlMs: 30 * 60 * 1000 },
   { source: "warning", endpoint: "/v7/warning/now", ttlMs: 10 * 60 * 1000 }
@@ -46,10 +46,13 @@ export function createWeatherService({
     if (!client) throw new Error("Weather client is required outside mock mode");
 
     const settled = await Promise.allSettled(specs.map((item) => client.request(resolveSpec(item, input, apiHost))));
-    const body = { location: input.location, point: input.point, errors: [] };
+    const body = { location: input.location, point: input.point, errors: [], staleSources: [] };
     settled.forEach((result, index) => {
       const source = specs[index].source;
-      if (result.status === "fulfilled") body[source] = result.value;
+      if (result.status === "fulfilled") {
+        body[source] = result.value;
+        if (isStaleWeatherData(result.value)) body.staleSources.push(source);
+      }
       else {
         body[source] = null;
         body.errors.push(publicUpstreamError(source, result.reason, specs.length === 2));
@@ -91,12 +94,18 @@ function resolveSpec(item, input, apiHost) {
   else if (item.source === "indices") params = { location: input.location, type: "1,2,3,5,8,9,10,15", lang: "zh" };
   else if (item.source === "warning") params = { location: input.location, lang: "zh" };
   else params = { location: input.location, lang: "zh", unit: "m" };
-  return { host: apiHost, endpoint: item.endpoint, params, ttlMs: item.ttlMs };
+  return {
+    host: apiHost,
+    endpoint: item.endpoint,
+    params,
+    ttlMs: item.ttlMs,
+    staleIfErrorMs: item.staleIfErrorMs
+  };
 }
 
 function mockResult(specs, input, insightBuilder, now) {
   const all = mockWeatherPayload(input.location, input.point);
-  const body = { location: input.location, point: input.point, errors: [] };
+  const body = { location: input.location, point: input.point, errors: [], staleSources: [] };
   for (const item of specs) body[item.source] = all[item.source];
   body.insight = insightBuilder(body, {
     source: "Mock",
