@@ -25,7 +25,10 @@ Most weather apps give you numbers. Weather Pro focuses on the decisions behind 
 
 - **Decide at a glance** with actionable guidance built from temperature, rain, wind, warnings, and lifestyle indices
 - **See the next two hours** with minute-level precipitation trends
-- **Switch by context** between commute, outdoor, and family views
+- **Get genuinely different scenario advice** for commuting, outdoor activities, and family plans
+- **Enable local rain reminders** with a location, lead time, and active hours
+- **Use current and favorite locations** with up to five places stored locally
+- **Understand the score** through weather penalties, source, and update time
 - **Try it without an account** using the built-in Mock mode
 - **Keep credentials server-side** behind an Express API proxy
 - **Deploy simply** with a production build or Docker Compose
@@ -53,8 +56,18 @@ Open [http://localhost:5177](http://localhost:5177). Mock data is enabled by def
 | 7-day and 24-hour forecasts | How to plan commutes and activities |
 | Weather warnings and lifestyle indices | How to avoid weather-related risks |
 | City and district search | What conditions look like at your destination |
-| Commute / Outdoor / Family modes | Which information matters for your situation |
+| Commute / Outdoor / Family modes | Different departure, activity, and family guidance |
+| Local rain reminders | Browser or in-page warnings while the app is open |
+| Current and favorite locations | Fast switching between frequently used places |
+| Explainable weather score | Rain, wind, UV, source, and freshness details |
 | Skeleton states and progressive loading | Get the key conclusion sooner on slow networks |
+
+## Local Rain Reminders
+
+Open “Rain reminder” to choose a location, a 10/20/30-minute lead time, and active hours. Weather Pro requests notification permission only after an explicit click.
+
+> [!NOTE]
+> This is a local MVP. It checks rain every five minutes while the page is open and again when the page becomes visible. Reminders are not guaranteed after the browser closes; background Web Push and cross-device sync remain on the Roadmap.
 
 ## Use Real QWeather Data
 
@@ -110,7 +123,7 @@ QWeather API (or built-in Mock data)
 
 ## Roadmap and Contributing
 
-PWA support, favorite locations, rain reminders, shareable weather cards, and more outdoor scenarios are on the [Roadmap](./ROADMAP.md).
+PWA support, background Web Push, cross-device sync, shareable weather cards, and more outdoor scenarios are on the [Roadmap](./ROADMAP.md).
 
 Contributions are welcome. Please read the [contribution guide](./CONTRIBUTING.md), run `npm test` and `npm run build`, then open a focused pull request. Report vulnerabilities according to the [security policy](./SECURITY.md).
 

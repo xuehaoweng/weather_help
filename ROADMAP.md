@@ -1,12 +1,21 @@
 # Roadmap
 
+## Completed
+
+- Scenario-specific commute, outdoor, and family advice
+- Explainable weather score with freshness and source
+- Local favorite locations and current-location lookup
+- Local rain reminders while the page is open
+- Mobile-first decision summary
+- Screenshot assets for README
+
 ## Near Term
 
 - PWA install support
-- Local favorite locations: home, office, school, parents
-- Rain-before reminders
+- Background Web Push rain reminders
+- Cross-device reminder and favorite-location sync
 - Better empty/error states for QWeather API limits
-- Screenshot assets and demo GIF for README
+- Demo GIF for README
 - English UI toggle
 
 ## Product Experiments
