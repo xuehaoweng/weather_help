@@ -29,6 +29,7 @@ Most weather apps give you numbers. Weather Pro focuses on the decisions behind 
 - **Enable local rain reminders** with a location, lead time, and active hours
 - **Use current and favorite locations** with up to five places stored locally
 - **Understand the score** through weather penalties, source, and update time
+- **Run an optional lightweight admin** with anonymous aggregate metrics and no third-party analytics
 - **Try it without an account** using the built-in Mock mode
 - **Keep credentials server-side** behind an Express API proxy
 - **Deploy simply** with a production build or Docker Compose
@@ -97,6 +98,23 @@ docker compose up --build
 
 Open [http://localhost:8787](http://localhost:8787). See the [deployment guide](./docs/deployment.md) for production details.
 
+## Optional Admin Dashboard
+
+Analytics and the admin dashboard are disabled by default. Add the following to `.env`:
+
+```bash
+ANALYTICS_ENABLED=true
+ANALYTICS_HASH_SECRET=replace-with-a-long-random-secret
+ADMIN_PASSWORD=replace-with-a-strong-admin-password
+```
+
+Restart and open [http://localhost:5177/admin](http://localhost:5177/admin), or `/admin` on the production origin.
+
+The dashboard shows 7/30-day page views, anonymous daily visitors, location selections, scenario usage, reminders, client errors, and service health. It retains only 30 days of daily aggregates and does not store IP addresses, User-Agent strings, search terms, precise locations, or visitor-level records.
+
+> [!IMPORTANT]
+> The dashboard currently targets a single self-hosted instance. Use HTTPS, a strong independent password, and a random hash secret in production.
+
 ## Architecture
 
 ```text
@@ -104,7 +122,7 @@ React + Vite frontend
         │
         │  /api/*
         ▼
-Express API proxy ── cache / aggregation / scenario advice
+Express API proxy ── cache / scenario advice / optional analytics
         │
         │  server-side credentials
         ▼

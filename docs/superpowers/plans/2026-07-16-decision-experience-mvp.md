@@ -1,6 +1,6 @@
 # Weather Pro 决策体验 MVP 实现计划
 
-> **面向 AI 代理的工作者：** 必需子技能：使用 superpowers:subagent-driven-development（推荐）或 superpowers:executing-plans 逐任务实现此计划。步骤使用复选框（`- [ ]`）语法来跟踪进度。
+> **面向 AI 代理的工作者：** 必需子技能：使用 superpowers:subagent-driven-development（推荐）或 superpowers:executing-plans 逐任务实现此计划。步骤使用复选框（`- [x]`）语法来跟踪进度。
 
 **目标：** 交付场景差异化建议、本机雨前提醒、当前位置与常用地点、可解释评分和移动端首屏重排。
 
@@ -28,7 +28,7 @@
 - 创建：`shared/advice-engine.test.js`
 - 创建：`shared/advice-engine.js`
 
-- [ ] **步骤 1：编写三种场景和评分因素的失败测试**
+- [x] **步骤 1：编写三种场景和评分因素的失败测试**
 
 ```js
 import test from "node:test";
@@ -60,13 +60,13 @@ test("score factors explain the final value", () => {
 });
 ```
 
-- [ ] **步骤 2：运行测试确认模块尚不存在**
+- [x] **步骤 2：运行测试确认模块尚不存在**
 
 运行：`node --test shared/advice-engine.test.js`
 
 预期：FAIL，报错 `ERR_MODULE_NOT_FOUND`。
 
-- [ ] **步骤 3：实现统一建议结构**
+- [x] **步骤 3：实现统一建议结构**
 
 `buildWeatherInsight(input)` 返回：
 
@@ -91,13 +91,13 @@ test("score factors explain the final value", () => {
 
 每个 `decision` 使用 `{ key, status: "ok" | "warn" | "danger" | "unknown", label, value, reason }`。
 
-- [ ] **步骤 4：运行建议引擎测试**
+- [x] **步骤 4：运行建议引擎测试**
 
 运行：`node --test shared/advice-engine.test.js`
 
 预期：全部通过。
 
-- [ ] **步骤 5：提交任务 1**
+- [x] **步骤 5：提交任务 1**
 
 ```bash
 git add shared/advice-engine.js shared/advice-engine.test.js
@@ -112,7 +112,7 @@ git commit -m "feat: add scenario-specific weather advice"
 - 修改：`src/weather-loader.js`
 - 修改：`src/weather-loader.test.js`
 
-- [ ] **步骤 1：扩展服务测试**
+- [x] **步骤 1：扩展服务测试**
 
 新增断言：
 
@@ -131,13 +131,13 @@ assert.ok(full.body.insight.firstRainAt);
 assert.equal(result.body.insight.isPartial, true);
 ```
 
-- [ ] **步骤 2：运行服务测试验证失败**
+- [x] **步骤 2：运行服务测试验证失败**
 
 运行：`node --test server/weather-service.test.js src/weather-loader.test.js`
 
 预期：新 `scenarios`、`source` 或 `isPartial` 断言失败。
 
-- [ ] **步骤 3：用建议引擎替换旧内联评分逻辑**
+- [x] **步骤 3：用建议引擎替换旧内联评分逻辑**
 
 `weather-service.js` 使用核心数据调用共享引擎：
 
@@ -157,17 +157,17 @@ buildWeatherInsight({
 
 为 `createWeatherService` 增加可注入 `now`，保证时间测试稳定。核心响应先生成无分钟降雨与生活指数的初始建议。
 
-- [ ] **步骤 4：验证渐进合并保留最新建议**
+- [x] **步骤 4：验证渐进合并保留最新建议**
 
 更新 `mergeWeatherData`：合并核心和详情原始数据后调用 `buildWeatherInsight`，确认最终建议使用分钟降雨与生活指数，同时保留核心错误并合并详情错误。
 
-- [ ] **步骤 5：运行相关测试**
+- [x] **步骤 5：运行相关测试**
 
 运行：`node --test server/weather-service.test.js src/weather-loader.test.js`
 
 预期：全部通过。
 
-- [ ] **步骤 6：提交任务 2**
+- [x] **步骤 6：提交任务 2**
 
 ```bash
 git add server/weather-service.js server/weather-service.test.js src/weather-loader.js src/weather-loader.test.js
@@ -184,7 +184,7 @@ git commit -m "feat: explain weather scores and data freshness"
 - 创建：`src/favorite-locations.js`
 - 创建：`src/favorite-locations.test.js`
 
-- [ ] **步骤 1：编写存储模块失败测试**
+- [x] **步骤 1：编写存储模块失败测试**
 
 测试必须覆盖：
 
@@ -197,7 +197,7 @@ assert.equal(addFavorite(storage, location).length, 1);
 assert.throws(() => addFavorite(storageWithFive, sixth), /最多保存 5 个/);
 ```
 
-- [ ] **步骤 2：编写提醒规则失败测试**
+- [x] **步骤 2：编写提醒规则失败测试**
 
 ```js
 const result = evaluateReminder({
@@ -212,17 +212,17 @@ assert.equal(result.notificationKey, "101020100:2026-07-16T10:55:00+08:00");
 
 同时覆盖时段外、超过提前量、相同去重键和跨午夜时段。
 
-- [ ] **步骤 3：运行测试验证失败**
+- [x] **步骤 3：运行测试验证失败**
 
 运行：`node --test src/reminder-store.test.js src/reminder-engine.test.js src/favorite-locations.test.js`
 
 预期：三个模块不存在。
 
-- [ ] **步骤 4：实现版本化 localStorage 模块**
+- [x] **步骤 4：实现版本化 localStorage 模块**
 
 使用依赖注入的 storage 参数，不直接在纯函数测试中访问浏览器。损坏 JSON、未知版本和非法字段恢复默认值。常用地点按 `id` 去重并限制五个。
 
-- [ ] **步骤 5：实现纯提醒判断**
+- [x] **步骤 5：实现纯提醒判断**
 
 `evaluateReminder` 只返回结果，不调用 Notification：
 
@@ -235,13 +235,13 @@ assert.equal(result.notificationKey, "101020100:2026-07-16T10:55:00+08:00");
 }
 ```
 
-- [ ] **步骤 6：运行本地规则测试**
+- [x] **步骤 6：运行本地规则测试**
 
 运行：`node --test src/reminder-store.test.js src/reminder-engine.test.js src/favorite-locations.test.js`
 
 预期：全部通过。
 
-- [ ] **步骤 7：提交任务 3**
+- [x] **步骤 7：提交任务 3**
 
 ```bash
 git add src/reminder-store.js src/reminder-store.test.js src/reminder-engine.js src/reminder-engine.test.js src/favorite-locations.js src/favorite-locations.test.js
@@ -255,7 +255,7 @@ git commit -m "feat: add local reminders and favorite locations"
 - 修改：`server/app.js`
 - 修改：`server/app.test.js`
 
-- [ ] **步骤 1：编写坐标地点查询测试**
+- [x] **步骤 1：编写坐标地点查询测试**
 
 ```js
 const nearest = await handlers.locations({ q: "121.47,31.23" });
@@ -265,23 +265,23 @@ assert.equal(nearest.body.locations[0].name, "上海");
 
 真实模式测试确认 `lookupLocations` 收到原始坐标字符串。
 
-- [ ] **步骤 2：运行 API 测试验证失败**
+- [x] **步骤 2：运行 API 测试验证失败**
 
 运行：`node --test server/app.test.js`
 
 预期：Mock 坐标查询返回空数组。
 
-- [ ] **步骤 3：实现最近 Mock 城市**
+- [x] **步骤 3：实现最近 Mock 城市**
 
 解析 `lon,lat`，校验范围，用平方距离选择最近城市；普通关键词继续使用现有匹配逻辑。非法坐标返回 `INVALID_LOCATION`。
 
-- [ ] **步骤 4：运行 API 测试**
+- [x] **步骤 4：运行 API 测试**
 
 运行：`node --test server/app.test.js`
 
 预期：全部通过。
 
-- [ ] **步骤 5：提交任务 4**
+- [x] **步骤 5：提交任务 4**
 
 ```bash
 git add server/mock-data.js server/app.js server/app.test.js
@@ -298,7 +298,7 @@ git commit -m "feat: resolve the nearest mock weather location"
 - 创建：`src/components/MobileSummary.jsx`
 - 修改：`src/main.jsx`
 
-- [ ] **步骤 1：拆分地点选择组件**
+- [x] **步骤 1：拆分地点选择组件**
 
 `LocationPicker` 接收：
 
@@ -312,11 +312,11 @@ git commit -m "feat: resolve the nearest mock weather location"
 
 定位只在按钮点击后调用 `navigator.geolocation.getCurrentPosition`，成功后请求 `/api/locations?q=${lon},${lat}`。
 
-- [ ] **步骤 2：实现提醒设置对话框**
+- [x] **步骤 2：实现提醒设置对话框**
 
 对话框展示本机限制、地点、10/20/30 分钟和生效时段。只有用户点击“允许通知”时执行 `Notification.requestPermission()`。不支持或拒绝时切换为页面内提示。
 
-- [ ] **步骤 3：在 App 中运行提醒检查器**
+- [x] **步骤 3：在 App 中运行提醒检查器**
 
 使用一个 effect：
 
@@ -337,25 +337,25 @@ useEffect(() => {
 
 发送成功后保存 `lastNotificationKey`。
 
-- [ ] **步骤 4：替换通用 Scenario 组件**
+- [x] **步骤 4：替换通用 Scenario 组件**
 
 `ScenarioPanel` 直接渲染 `weather.insight.scenarios[mode]` 的 headline、summary 和 decisions。状态颜色由 `status` 决定，并显示 `reason`。
 
-- [ ] **步骤 5：接入评分解释和数据元信息**
+- [x] **步骤 5：接入评分解释和数据元信息**
 
 评分卡增加“查看评分依据”按钮，展开 `ScoreDetails`，显示基础分、扣分因素、更新时间、数据来源和“部分数据暂不可用”状态。
 
-- [ ] **步骤 6：隐藏未实现会员购买**
+- [x] **步骤 6：隐藏未实现会员购买**
 
 删除价格、购买按钮和首屏“付费买……”文案。可保留不带 CTA 的开源 Roadmap 提示。
 
-- [ ] **步骤 7：运行全量测试和构建**
+- [x] **步骤 7：运行全量测试和构建**
 
 运行：`npm test && npm run build`
 
 预期：全部测试通过，Vite 构建成功。
 
-- [ ] **步骤 8：提交任务 5**
+- [x] **步骤 8：提交任务 5**
 
 ```bash
 git add src/main.jsx src/components
@@ -368,11 +368,11 @@ git commit -m "feat: connect actionable weather decision flows"
 - 修改：`src/styles.css`
 - 修改：`src/main.jsx`
 
-- [ ] **步骤 1：增加语义状态**
+- [x] **步骤 1：增加语义状态**
 
 搜索框添加 `<label className="sr-only" htmlFor="location-search">`；场景按钮添加 `aria-pressed={mode === key}`；对话框使用 `role="dialog"`、`aria-modal="true"` 和标题关联。
 
-- [ ] **步骤 2：增加键盘焦点样式**
+- [x] **步骤 2：增加键盘焦点样式**
 
 ```css
 button:focus-visible,
@@ -383,11 +383,11 @@ select:focus-visible {
 }
 ```
 
-- [ ] **步骤 3：移动端重排**
+- [x] **步骤 3：移动端重排**
 
 在 `max-width: 640px` 下使用 grid areas 或组件顺序，使移动摘要位于说明文案前；主标题限制两行并使用 `clamp(34px, 10vw, 46px)`，按钮最小尺寸 `44px`。
 
-- [ ] **步骤 4：浏览器验证**
+- [x] **步骤 4：浏览器验证**
 
 以 1365×900 和 390×844 验证：
 
@@ -397,13 +397,13 @@ select:focus-visible {
 - Tab 键焦点清晰。
 - 通知权限只在明确点击后请求。
 
-- [ ] **步骤 5：运行验证**
+- [x] **步骤 5：运行验证**
 
 运行：`npm test && npm run build && git diff --check`
 
 预期：全部成功。
 
-- [ ] **步骤 6：提交任务 6**
+- [x] **步骤 6：提交任务 6**
 
 ```bash
 git add src/main.jsx src/styles.css
@@ -417,21 +417,21 @@ git commit -m "feat: prioritize mobile weather decisions"
 - 修改：`README.en.md`
 - 修改：`ROADMAP.md`
 
-- [ ] **步骤 1：更新产品能力说明**
+- [x] **步骤 1：更新产品能力说明**
 
 记录三种真实场景建议、本机提醒限制、当前位置、常用地点和评分解释。明确浏览器关闭后本机提醒不保证触发。
 
-- [ ] **步骤 2：更新 Roadmap**
+- [x] **步骤 2：更新 Roadmap**
 
 将已完成项目移出 Near Term；后台 Web Push、账号同步和付费保留为未来能力。
 
-- [ ] **步骤 3：运行最终验证**
+- [x] **步骤 3：运行最终验证**
 
 运行：`npm test && npm run build && git diff --check`
 
 预期：全部成功且工作区只包含计划内文档变更。
 
-- [ ] **步骤 4：提交任务 7**
+- [x] **步骤 4：提交任务 7**
 
 ```bash
 git add README.md README.en.md ROADMAP.md

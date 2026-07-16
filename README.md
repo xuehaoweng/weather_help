@@ -29,6 +29,7 @@
 - **本机雨前提醒**：可设置地点、提前量和生效时段，页面打开期间自动检查降雨
 - **常用地点与当前位置**：一键定位，并在本机保存最多 5 个常用地点
 - **评分有依据**：查看基础分、天气扣分项、数据来源和更新时间
+- **可选轻量后台**：匿名聚合访问、场景、提醒与错误指标，不依赖第三方统计平台
 - **免费即可体验**：默认 Mock 模式，不注册账号、不填写 API Key 也能完整运行
 - **凭据留在服务端**：浏览器只访问项目 API，避免将和风天气 Key 暴露到前端
 - **部署方式简单**：支持本地运行、生产构建与 Docker Compose
@@ -103,6 +104,23 @@ docker compose up --build
 
 打开 [http://localhost:8787](http://localhost:8787)。生产构建、环境变量和部署建议见[部署文档](./docs/deployment.md)。
 
+## 可选管理后台
+
+默认不开启统计和后台。编辑 `.env`：
+
+```bash
+ANALYTICS_ENABLED=true
+ANALYTICS_HASH_SECRET=replace-with-a-long-random-secret
+ADMIN_PASSWORD=replace-with-a-strong-admin-password
+```
+
+重新启动后访问 [http://localhost:5177/admin](http://localhost:5177/admin)，生产环境访问同源 `/admin`。
+
+后台提供最近 7/30 天访问量、匿名日活、城市选择次数、场景分布、提醒漏斗、客户端错误和服务健康。只保存最近 30 天每日聚合数据，不保存 IP、User-Agent、城市搜索词、精确位置或访客明细。
+
+> [!IMPORTANT]
+> 管理后台当前面向单实例自托管。生产环境必须使用 HTTPS，并设置独立的强密码和随机哈希密钥。
+
 ## 工作原理
 
 ```text
@@ -110,7 +128,7 @@ React + Vite 前端
         │
         │  /api/*
         ▼
-Express API 代理 ── 缓存 / 数据聚合 / 场景建议
+Express API 代理 ── 缓存 / 场景建议 / 可选匿名统计
         │
         │  服务端凭据
         ▼
