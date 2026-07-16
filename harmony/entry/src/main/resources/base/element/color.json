@@ -1,0 +1,24 @@
+{
+  "color": [
+    {
+      "name": "start_window_background",
+      "value": "#123C32"
+    },
+    {
+      "name": "shell_background",
+      "value": "#F3F7F5"
+    },
+    {
+      "name": "brand",
+      "value": "#176B57"
+    },
+    {
+      "name": "muted",
+      "value": "#6D7F79"
+    },
+    {
+      "name": "surface",
+      "value": "#FFFFFF"
+    }
+  ]
+}

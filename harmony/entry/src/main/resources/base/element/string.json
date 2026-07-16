@@ -1,0 +1,32 @@
+{
+  "string": [
+    {
+      "name": "module_desc",
+      "value": "Weather Pro HarmonyOS shell"
+    },
+    {
+      "name": "EntryAbility_desc",
+      "value": "Weather Pro entry ability"
+    },
+    {
+      "name": "EntryAbility_label",
+      "value": "Weather Pro"
+    },
+    {
+      "name": "loading_message",
+      "value": "Loading Weather Pro…"
+    },
+    {
+      "name": "error_title",
+      "value": "Unable to load Weather Pro"
+    },
+    {
+      "name": "error_message",
+      "value": "Check your connection and try again."
+    },
+    {
+      "name": "retry",
+      "value": "Retry"
+    }
+  ]
+}

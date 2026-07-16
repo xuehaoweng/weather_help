@@ -1,0 +1,2 @@
+# Obfuscation is disabled for the installable test build.
+# Keep this file as the explicit release-rule placeholder.

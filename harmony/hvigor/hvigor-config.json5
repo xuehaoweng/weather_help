@@ -1,0 +1,12 @@
+{
+  modelVersion: '5.0.5',
+  dependencies: {
+    '@ohos/hvigor': '6.0.0',
+  },
+  execution: {
+    daemon: true,
+    incremental: true,
+    parallel: true,
+    typeCheck: false,
+  },
+}
