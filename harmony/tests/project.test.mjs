@@ -308,3 +308,62 @@ return { APP_URL, isTrustedAppUrl, isExternalHttpsUrl };`,
     );
   }
 });
+
+test('HarmonyOS entry ability loads the ArkWeb shell page', () => {
+  const entryAbility = readFileSync(
+    join(
+      harmonyRoot,
+      'entry/src/main/ets/entryability/EntryAbility.ets',
+    ),
+    'utf8',
+  );
+
+  assert.match(
+    entryAbility,
+    /windowStage\.loadContent\(\s*'pages\/Index'/,
+  );
+  assert.match(entryAbility, /class EntryAbility extends UIAbility/);
+  assert.doesNotMatch(entryAbility, /requestPermissionsFromUser/);
+});
+
+test('HarmonyOS ArkWeb shell enforces navigation and failure behavior', () => {
+  const indexPage = readFileSync(
+    join(harmonyRoot, 'entry/src/main/ets/pages/Index.ets'),
+    'utf8',
+  );
+
+  assert.match(
+    indexPage,
+    /new webview\.WebviewController\(\)/,
+  );
+  assert.match(indexPage, /Web\(\s*\{\s*src:\s*APP_URL,\s*controller:/s);
+  assert.match(indexPage, /\.javaScriptAccess\(\s*true\s*\)/);
+  assert.match(indexPage, /\.domStorageAccess\(\s*true\s*\)/);
+  assert.match(indexPage, /\.fileAccess\(\s*false\s*\)/);
+  assert.match(indexPage, /\.mixedMode\(\s*MixedMode\.None\s*\)/);
+  assert.match(indexPage, /\.onPageBegin\(/);
+  assert.match(indexPage, /\.onPageEnd\(/);
+  assert.match(indexPage, /\.onErrorReceive\(/);
+  assert.match(
+    indexPage,
+    /retry\(\)[\s\S]*controller\.loadUrl\(\s*APP_URL\s*\)/,
+  );
+  assert.match(
+    indexPage,
+    /onBackPress\(\)[\s\S]*accessBackward\(\)[\s\S]*backward\(\)/,
+  );
+  assert.match(indexPage, /isTrustedAppUrl\(/);
+  assert.match(indexPage, /isExternalHttpsUrl\(/);
+  assert.match(indexPage, /\.startAbility\(/);
+  assert.match(
+    indexPage,
+    /action:\s*'ohos\.want\.action\.viewData'/,
+  );
+  assert.match(indexPage, /uri:\s*url/);
+  assert.match(indexPage, /\.onOverrideUrlLoading\(/);
+  assert.match(indexPage, /LoadingProgress\(\)/);
+  assert.match(indexPage, /\$r\('app\.string\.loading_message'\)/);
+  assert.match(indexPage, /\$r\('app\.string\.error_title'\)/);
+  assert.match(indexPage, /\$r\('app\.string\.retry'\)/);
+  assert.doesNotMatch(indexPage, /javaScriptProxy|http:\/\//i);
+});
