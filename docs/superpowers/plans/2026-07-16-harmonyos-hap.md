@@ -857,7 +857,7 @@ npm run build
 
 预期：Vite 构建成功并生成 `dist/`。
 
-- [ ] **步骤 4：验证线上 HTTPS**
+- [x] **步骤 4：验证线上 HTTPS**
 
 运行：
 
