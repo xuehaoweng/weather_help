@@ -1,6 +1,13 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { randomUUID } from 'node:crypto';
+import {
+  existsSync,
+  readFileSync,
+  readdirSync,
+  unlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { dirname, extname, join, parse, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { runInNewContext } from 'node:vm';
@@ -9,6 +16,28 @@ import test from 'node:test';
 const testsRoot = dirname(fileURLToPath(import.meta.url));
 const harmonyRoot = dirname(testsRoot);
 const repoRoot = dirname(harmonyRoot);
+const forbiddenSigningExtensions = new Set([
+  '.p12',
+  '.p7b',
+  '.cer',
+  '.profile',
+  '.pem',
+  '.key',
+  '.jks',
+  '.keystore',
+]);
+const textFileExtensions = new Set([
+  '.ets',
+  '.json',
+  '.json5',
+  '.md',
+  '.mjs',
+  '.ts',
+  '.txt',
+  '.xml',
+  '.yaml',
+  '.yml',
+]);
 const requiredFiles = [
   'build-profile.json5',
   'hvigorfile.ts',
@@ -43,6 +72,50 @@ function listProjectFiles(directory) {
 
 function normalizedProjectPath(filePath) {
   return relative(harmonyRoot, filePath).replaceAll(sep, '/');
+}
+
+function listTrackedHarmonyFiles() {
+  const result = spawnSync(
+    'git',
+    ['ls-files', '--', 'harmony'],
+    {
+      cwd: repoRoot,
+      encoding: 'utf8',
+    },
+  );
+  assert.equal(result.status, 0, result.stderr);
+
+  return result.stdout
+    .trim()
+    .split('\n')
+    .filter(Boolean)
+    .map((filePath) => join(repoRoot, filePath));
+}
+
+function assertTrackedHarmonyFilesAreSafe(projectFiles) {
+  for (const filePath of projectFiles) {
+    assert.equal(
+      forbiddenSigningExtensions.has(extname(filePath).toLowerCase()),
+      false,
+      `forbidden signing file: harmony/${normalizedProjectPath(filePath)}`,
+    );
+  }
+
+  const projectTexts = projectFiles
+    .filter((filePath) => {
+      const projectPath = normalizedProjectPath(filePath);
+      return (
+        !projectPath.startsWith('tests/') &&
+        !projectPath.split('/').includes('build') &&
+        textFileExtensions.has(extname(filePath).toLowerCase())
+      );
+    })
+    .map((filePath) => readFileSync(filePath, 'utf8'))
+    .join('\n');
+  assert.doesNotMatch(
+    projectTexts,
+    /storeFile|storePassword|keyPassword|keyPwd|keyAlias|certpath|certificate|signAlg/i,
+  );
 }
 
 function collectResourceReferences(value, references = []) {
@@ -204,35 +277,30 @@ test('entry module resource references resolve to packaged resources', () => {
 });
 
 test('HarmonyOS project excludes signing materials and sensitive fields', () => {
-  const forbiddenExtensions = new Set([
-    '.p12',
-    '.p7b',
-    '.cer',
-    '.profile',
-    '.pem',
-    '.key',
-    '.jks',
-    '.keystore',
-  ]);
-  const projectFiles = listProjectFiles(harmonyRoot).filter(
-    (filePath) => !normalizedProjectPath(filePath).startsWith('tests/'),
+  const ignoredSigningPath = join(
+    harmonyRoot,
+    `.project-test-${randomUUID()}.p12`,
   );
+  writeFileSync(ignoredSigningPath, 'ignored local signing material');
 
-  for (const filePath of projectFiles) {
+  try {
+    const projectFiles = listTrackedHarmonyFiles();
     assert.equal(
-      forbiddenExtensions.has(extname(filePath).toLowerCase()),
+      projectFiles.includes(ignoredSigningPath),
       false,
-      `forbidden signing file: harmony/${normalizedProjectPath(filePath)}`,
+      'ignored local signing materials must not enter the tracked-file audit',
     );
+    assertTrackedHarmonyFilesAreSafe(projectFiles);
+    assert.throws(
+      () => assertTrackedHarmonyFilesAreSafe([
+        join(harmonyRoot, 'signing/forced-tracked.p12'),
+      ]),
+      /forbidden signing file: harmony\/signing\/forced-tracked\.p12/,
+      'a force-tracked signing file must fail the audit',
+    );
+  } finally {
+    unlinkSync(ignoredSigningPath);
   }
-
-  const projectTexts = projectFiles
-    .map((filePath) => readFileSync(filePath, 'utf8'))
-    .join('\n');
-  assert.doesNotMatch(
-    projectTexts,
-    /storeFile|storePassword|keyPassword|keyPwd|keyAlias|certpath|certificate|signAlg/i,
-  );
 });
 
 test('repository ignores DevEco output and HarmonyOS signing materials', () => {
