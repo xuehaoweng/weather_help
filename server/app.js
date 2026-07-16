@@ -56,6 +56,10 @@ export function createWeatherApp({
     }
     return res.status(result.status).json(result.body || {});
   });
+  app.get("/api/admin/session", async (req, res) => {
+    const result = await handlers.adminSession(readSessionCookie(req.headers.cookie));
+    return res.status(result.status).json(result.body);
+  });
   app.post("/api/admin/logout", async (req, res) => {
     const result = await handlers.adminLogout(readSessionCookie(req.headers.cookie));
     res.setHeader("Set-Cookie", serializeSessionCookie("", {
@@ -143,6 +147,13 @@ export function createWeatherHandlers({
       }
       return { status: 200, body: { ok: true }, sessionId: result.sessionId };
     },
+    adminSession: async (sessionId) => ({
+      status: 200,
+      body: {
+        enabled: Boolean(adminAuth?.enabled),
+        authenticated: Boolean(adminAuth?.enabled && adminAuth.verify(sessionId))
+      }
+    }),
     adminLogout: async (sessionId) => {
       if (!adminAuth?.enabled) return { status: 404, body: null };
       adminAuth.logout(sessionId);

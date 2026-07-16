@@ -175,3 +175,34 @@ test("admin overview stays available when anonymous analytics is disabled", asyn
   assert.equal(overview.body.totals.pageViews, 0);
   assert.deepEqual(overview.body.days, []);
 });
+
+test("admin session check returns a non-error authentication state", async () => {
+  const handlers = createWeatherHandlers({
+    weatherService: createWeatherService({ useMock: true }),
+    useMock: true,
+    adminAuth: {
+      enabled: true,
+      verify: (sessionId) => sessionId === "valid",
+      logout: () => {},
+      login: async () => ({ status: 200, sessionId: "valid" })
+    }
+  });
+
+  assert.deepEqual(await handlers.adminSession(""), {
+    status: 200,
+    body: { enabled: true, authenticated: false }
+  });
+  assert.deepEqual(await handlers.adminSession("valid"), {
+    status: 200,
+    body: { enabled: true, authenticated: true }
+  });
+
+  const disabled = createWeatherHandlers({
+    weatherService: createWeatherService({ useMock: true }),
+    useMock: true
+  });
+  assert.deepEqual(await disabled.adminSession(""), {
+    status: 200,
+    body: { enabled: false, authenticated: false }
+  });
+});

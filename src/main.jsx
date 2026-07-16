@@ -18,6 +18,7 @@ import {
   Wind
 } from "lucide-react";
 import { WeatherEffects } from "./WeatherEffects.jsx";
+import { AdminApp } from "./AdminApp.js";
 import { createAnalyticsClient } from "./analytics-client.js";
 import { LocationPicker } from "./components/LocationPicker.js";
 import { MobileSummary } from "./components/MobileSummary.js";
@@ -30,6 +31,7 @@ import { loadReminder, saveReminder } from "./reminder-store.js";
 import { resolveWeatherScene } from "./weather-effects.js";
 import { createLatestWeatherLoader, mergeWeatherData } from "./weather-loader.js";
 import "./styles.css";
+import "./admin.css";
 
 const defaultLocation = {
   id: "101010100",
@@ -634,4 +636,5 @@ function shortDate(value) {
   return date.toLocaleDateString("zh-CN", { weekday: "short", month: "numeric", day: "numeric" });
 }
 
-createRoot(document.getElementById("root")).render(<App />);
+const RootApp = window.location.pathname.startsWith("/admin") ? AdminApp : App;
+createRoot(document.getElementById("root")).render(<RootApp />);
