@@ -7,7 +7,11 @@ const query = { location: "101200204", lon: "111.84442", lat: "31.77692" };
 
 test("core and details request independent upstream groups", async () => {
   const calls = [];
-  const service = createWeatherService({ client: fakeClient(calls), apiHost: "api.test" });
+  const service = createWeatherService({
+    client: fakeClient(calls),
+    apiHost: "api.test",
+    now: () => Date.parse("2026-07-16T02:35:00.000Z")
+  });
 
   const core = await service.getCore(query);
   assert.deepEqual(calls, [
@@ -19,6 +23,10 @@ test("core and details request independent upstream groups", async () => {
   assert.equal(core.status, 200);
   assert.equal(core.body.minutely, undefined);
   assert.equal(core.body.indices, undefined);
+  assert.ok(core.body.insight.scenarios.commute);
+  assert.equal(core.body.insight.source, "QWeather");
+  assert.equal(core.body.insight.updatedAt, "2026-07-16T02:35:00.000Z");
+  assert.equal(core.body.insight.isPartial, false);
 
   calls.length = 0;
   const details = await service.getDetails(query);
@@ -36,6 +44,8 @@ test("full mode requests all six groups and keeps rain-aware insight", async () 
   assert.equal(result.status, 200);
   assert.equal(result.body.insight.maxPrecip, 0.8);
   assert.match(result.body.insight.title, /下雨/);
+  assert.match(result.body.insight.scenarios.outdoor.headline, /不适合|暂停|改期/);
+  assert.equal(result.body.insight.source, "QWeather");
   assert.ok(result.body.minutely);
   assert.ok(result.body.indices);
 });
@@ -54,6 +64,7 @@ test("partial upstream failure returns 200 with a structured public error", asyn
     code: "UPSTREAM_TIMEOUT",
     message: "Weather data is temporarily unavailable"
   }]);
+  assert.equal(result.body.insight.isPartial, true);
 });
 
 test("all failures return mode-specific 502 payloads", async () => {
@@ -101,6 +112,8 @@ test("mock mode exposes the same core, details, and full shapes", async () => {
   assert.ok(details.body.indices);
   assert.ok(full.body.now);
   assert.ok(full.body.minutely);
+  assert.equal(full.body.insight.source, "Mock");
+  assert.ok(full.body.insight.scenarios.family);
 });
 
 function fakeClient(calls, failures = new Set()) {

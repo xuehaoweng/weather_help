@@ -2,28 +2,38 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createLatestWeatherLoader, mergeWeatherData } from "./weather-loader.js";
 
-test("merges details without replacing core insight or errors", () => {
+test("merges details, recomputes complete advice, and preserves errors", () => {
   const core = {
     location: "a",
-    now: { now: { text: "晴" } },
-    insight: { title: "适合出门", commuteScore: { value: 92 } },
+    now: { now: { text: "晴", temp: "25", feelsLike: "26", windSpeed: "5", precip: "0" } },
+    daily: { daily: [{ textDay: "晴", uvIndex: "5" }] },
+    hourly: { hourly: [] },
+    warning: { warning: [] },
+    insight: {
+      title: "适合出门",
+      commuteScore: { value: 92 },
+      updatedAt: "2026-07-16T02:35:00.000Z",
+      source: "QWeather",
+      isPartial: false
+    },
     errors: [{ source: "warning" }]
   };
   const details = {
     location: "a",
-    minutely: { minutely: [] },
-    indices: { daily: [] },
-    insight: { rainSummary: "两小时无雨", maxPrecip: 0 },
+    minutely: {
+      minutely: [{ fxTime: "2026-07-16T10:55+08:00", precip: "0.8" }]
+    },
+    indices: { daily: [{ type: "1", category: "较不宜" }] },
+    insight: { rainSummary: "两小时有雨", maxPrecip: 0.8 },
     errors: [{ source: "indices" }]
   };
 
-  assert.deepEqual(mergeWeatherData(core, details), {
-    ...core,
-    minutely: details.minutely,
-    indices: details.indices,
-    insight: { ...core.insight, ...details.insight },
-    errors: [...core.errors, ...details.errors]
-  });
+  const merged = mergeWeatherData(core, details);
+  assert.equal(merged.insight.firstRainAt, "2026-07-16T10:55+08:00");
+  assert.match(merged.insight.scenarios.commute.headline, /10:55|带伞|提前/);
+  assert.equal(merged.insight.source, "QWeather");
+  assert.equal(merged.insight.isPartial, true);
+  assert.deepEqual(merged.errors, [...core.errors, ...details.errors]);
 });
 
 test("buffers details until matching core succeeds", async () => {

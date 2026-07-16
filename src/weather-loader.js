@@ -1,3 +1,5 @@
+import { buildWeatherInsight } from "../shared/advice-engine.js";
+
 export function createLatestWeatherLoader(fetchImpl = fetch) {
   let currentGeneration = 0;
   let activeController = null;
@@ -76,12 +78,25 @@ export function createLatestWeatherLoader(fetchImpl = fetch) {
 }
 
 export function mergeWeatherData(core, details) {
-  return {
+  const merged = {
     ...core,
     minutely: details.minutely,
     indices: details.indices,
-    insight: { ...core?.insight, ...details?.insight },
     errors: [...(core?.errors || []), ...(details?.errors || [])]
+  };
+  return {
+    ...merged,
+    insight: buildWeatherInsight({
+      now: merged.now?.now,
+      today: merged.daily?.daily?.[0],
+      hourly: merged.hourly?.hourly || [],
+      warnings: merged.warning?.warning || [],
+      minutely: merged.minutely?.minutely || [],
+      indices: merged.indices?.daily || [],
+      updatedAt: core?.insight?.updatedAt || details?.insight?.updatedAt,
+      source: core?.insight?.source || details?.insight?.source,
+      isPartial: merged.errors.length > 0
+    })
   };
 }
 
