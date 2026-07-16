@@ -4,7 +4,7 @@
 
 **目标：** 交付场景差异化建议、本机雨前提醒、当前位置与常用地点、可解释评分和移动端首屏重排。
 
-**架构：** 服务端纯函数建议引擎负责生成三种场景建议、评分因素和数据元信息；前端用独立本地存储与提醒规则模块管理浏览器能力，React 组件只负责交互与展示。现有核心/详情渐进加载继续保留，详情到达后合并为更完整的建议。
+**架构：** `shared/advice-engine.js` 是前后端唯一建议规则源；服务端用核心天气生成初始建议，前端在核心与详情数据合并后用同一引擎重新计算完整建议。前端用独立本地存储与提醒规则模块管理浏览器能力，React 组件只负责交互与展示。
 
 **技术栈：** Node.js test runner、Express 4、React 19、Vite 6、Browser Notification API、Geolocation API、localStorage
 
@@ -12,7 +12,7 @@
 
 ## 文件结构
 
-- 创建：`server/advice-engine.js`、`server/advice-engine.test.js`，生成评分解释与三种场景建议。
+- 创建：`shared/advice-engine.js`、`shared/advice-engine.test.js`，生成评分解释与三种场景建议。
 - 修改：`server/weather-service.js`、`server/weather-service.test.js`，整合核心和详情建议元数据。
 - 修改：`server/app.js`、`server/app.test.js`、`server/mock-data.js`，支持经纬度地点查询与最近 Mock 城市。
 - 创建：`src/reminder-store.js`、`src/reminder-store.test.js`，提醒配置持久化和迁移。
@@ -25,8 +25,8 @@
 ### 任务 1：场景建议与评分引擎
 
 **文件：**
-- 创建：`server/advice-engine.test.js`
-- 创建：`server/advice-engine.js`
+- 创建：`shared/advice-engine.test.js`
+- 创建：`shared/advice-engine.js`
 
 - [ ] **步骤 1：编写三种场景和评分因素的失败测试**
 
@@ -62,7 +62,7 @@ test("score factors explain the final value", () => {
 
 - [ ] **步骤 2：运行测试确认模块尚不存在**
 
-运行：`node --test server/advice-engine.test.js`
+运行：`node --test shared/advice-engine.test.js`
 
 预期：FAIL，报错 `ERR_MODULE_NOT_FOUND`。
 
@@ -93,14 +93,14 @@ test("score factors explain the final value", () => {
 
 - [ ] **步骤 4：运行建议引擎测试**
 
-运行：`node --test server/advice-engine.test.js`
+运行：`node --test shared/advice-engine.test.js`
 
 预期：全部通过。
 
 - [ ] **步骤 5：提交任务 1**
 
 ```bash
-git add server/advice-engine.js server/advice-engine.test.js
+git add shared/advice-engine.js shared/advice-engine.test.js
 git commit -m "feat: add scenario-specific weather advice"
 ```
 
@@ -109,6 +109,7 @@ git commit -m "feat: add scenario-specific weather advice"
 **文件：**
 - 修改：`server/weather-service.js`
 - 修改：`server/weather-service.test.js`
+- 修改：`src/weather-loader.js`
 - 修改：`src/weather-loader.test.js`
 
 - [ ] **步骤 1：扩展服务测试**
@@ -138,7 +139,7 @@ assert.equal(result.body.insight.isPartial, true);
 
 - [ ] **步骤 3：用建议引擎替换旧内联评分逻辑**
 
-`weather-service.js` 调用：
+`weather-service.js` 使用核心数据调用共享引擎：
 
 ```js
 buildWeatherInsight({
@@ -154,11 +155,11 @@ buildWeatherInsight({
 });
 ```
 
-为 `createWeatherService` 增加可注入 `now`，保证时间测试稳定。核心响应先生成无分钟降雨的建议，详情合并后覆盖 `rainSummary`、雨时段和场景建议。
+为 `createWeatherService` 增加可注入 `now`，保证时间测试稳定。核心响应先生成无分钟降雨与生活指数的初始建议。
 
 - [ ] **步骤 4：验证渐进合并保留最新建议**
 
-更新 `mergeWeatherData` 测试，确认详情 `insight.scenarios` 覆盖核心版本，同时保留核心错误并合并详情错误。
+更新 `mergeWeatherData`：合并核心和详情原始数据后调用 `buildWeatherInsight`，确认最终建议使用分钟降雨与生活指数，同时保留核心错误并合并详情错误。
 
 - [ ] **步骤 5：运行相关测试**
 
@@ -169,7 +170,7 @@ buildWeatherInsight({
 - [ ] **步骤 6：提交任务 2**
 
 ```bash
-git add server/weather-service.js server/weather-service.test.js src/weather-loader.test.js
+git add server/weather-service.js server/weather-service.test.js src/weather-loader.js src/weather-loader.test.js
 git commit -m "feat: explain weather scores and data freshness"
 ```
 
@@ -436,4 +437,3 @@ git commit -m "feat: prioritize mobile weather decisions"
 git add README.md README.en.md ROADMAP.md
 git commit -m "docs: explain local weather decision features"
 ```
-
