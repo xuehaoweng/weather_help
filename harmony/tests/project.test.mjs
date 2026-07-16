@@ -1,10 +1,14 @@
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
-import { extname, join, parse, relative, sep } from 'node:path';
+import { dirname, extname, join, parse, relative, sep } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { runInNewContext } from 'node:vm';
 import test from 'node:test';
 
-const harmonyRoot = join(process.cwd(), 'harmony');
+const testsRoot = dirname(fileURLToPath(import.meta.url));
+const harmonyRoot = dirname(testsRoot);
+const repoRoot = dirname(harmonyRoot);
 const requiredFiles = [
   'build-profile.json5',
   'hvigorfile.ts',
@@ -232,19 +236,23 @@ test('HarmonyOS project excludes signing materials and sensitive fields', () => 
 });
 
 test('repository ignores DevEco output and HarmonyOS signing materials', () => {
-  const gitignore = readFileSync(join(process.cwd(), '.gitignore'), 'utf8');
+  const gitignore = readFileSync(join(repoRoot, '.gitignore'), 'utf8');
   const requiredRules = [
     'harmony/.hvigor/',
     'harmony/.idea/',
     'harmony/local.properties',
     'harmony/oh_modules/',
     'harmony/**/build/',
-    '**/*.hap',
-    '**/*.app',
-    '**/*.p12',
-    '**/*.p7b',
-    '**/*.cer',
-    '**/*.profile',
+    'harmony/**/*.hap',
+    'harmony/**/*.app',
+    'harmony/**/*.p12',
+    'harmony/**/*.p7b',
+    'harmony/**/*.cer',
+    'harmony/**/*.profile',
+    'harmony/**/*.pem',
+    'harmony/**/*.key',
+    'harmony/**/*.jks',
+    'harmony/**/*.keystore',
   ];
 
   for (const rule of requiredRules) {
@@ -254,6 +262,54 @@ test('repository ignores DevEco output and HarmonyOS signing materials', () => {
       `missing .gitignore rule: ${rule}`,
     );
   }
+
+  assert.doesNotMatch(
+    gitignore,
+    /^\*\*\/\*\.(?:hap|app|p12|p7b|cer|profile|pem|key|jks|keystore)$/m,
+    'HarmonyOS package and signing rules must not ignore matching files repository-wide',
+  );
+
+  const ignoredPaths = [
+    'harmony/demo.hap',
+    'harmony/demo.app',
+    'harmony/demo.p12',
+    'harmony/demo.p7b',
+    'harmony/demo.cer',
+    'harmony/demo.profile',
+    'harmony/demo.pem',
+    'harmony/demo.key',
+    'harmony/demo.jks',
+    'harmony/demo.keystore',
+  ];
+  const checkIgnored = spawnSync(
+    'git',
+    ['check-ignore', ...ignoredPaths],
+    {
+      cwd: repoRoot,
+      encoding: 'utf8',
+    },
+  );
+  assert.equal(checkIgnored.status, 0, checkIgnored.stderr);
+  assert.deepEqual(
+    checkIgnored.stdout.trim().split('\n'),
+    ignoredPaths,
+    'HarmonyOS package and signing artifacts must be ignored',
+  );
+
+  const checkNonHarmonyApp = spawnSync(
+    'git',
+    ['check-ignore', 'docs/demo.app'],
+    {
+      cwd: repoRoot,
+      encoding: 'utf8',
+    },
+  );
+  assert.equal(
+    checkNonHarmonyApp.status,
+    1,
+    'non-HarmonyOS .app files must not be ignored by HarmonyOS rules',
+  );
+  assert.equal(checkNonHarmonyApp.stdout, '');
 });
 
 test('HarmonyOS README documents the DevEco signing and install flow', () => {
@@ -298,6 +354,14 @@ test('HarmonyOS README documents the DevEco signing and install flow', () => {
     {
       pattern: /签名材料只允许保存在开发机。不得提交/s,
       message: 'README must keep automatic signing local and uncommitted',
+    },
+    {
+      pattern: /git check-ignore[\s\S]*(?:\.hap|\.app)/,
+      message: 'README must verify generated HAP and APP artifacts are ignored',
+    },
+    {
+      pattern: /git ls-files[\s\S]*(?:p12|p7b|cer|profile|pem|key|jks|keystore)/,
+      message: 'README must verify signing materials are not tracked',
     },
     {
       pattern: /Build > Build Hap\(s\)\/APP\(s\) > Build Hap\(s\)/,

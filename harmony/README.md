@@ -39,10 +39,15 @@
 
 ```bash
 git status --short
-find harmony -type f \( -name '*.hap' -o -name '*.app' -o -name '*.p12' -o -name '*.p7b' -o -name '*.cer' -o -name '*.profile' \)
+find harmony -type f \( -name '*.hap' -o -name '*.app' \) -print0 \
+  | xargs -0 -r git check-ignore --no-index
+git ls-files \
+  'harmony/**/*.p12' 'harmony/**/*.p7b' 'harmony/**/*.cer' \
+  'harmony/**/*.profile' 'harmony/**/*.pem' 'harmony/**/*.key' \
+  'harmony/**/*.jks' 'harmony/**/*.keystore'
 ```
 
-第二条命令必须没有签名材料输出。
+`.hap` 和 `.app` 是正常构建产物，可以留在本地；第二条命令必须逐项输出找到的构建产物，确认它们均被 Git 忽略。第三条命令必须没有输出，确认签名私钥和证书材料未被 Git 跟踪。
 
 ## 构建和安装
 

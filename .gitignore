@@ -16,9 +16,13 @@ harmony/oh_modules/
 harmony/**/build/
 
 # HarmonyOS packages and signing materials
-**/*.hap
-**/*.app
-**/*.p12
-**/*.p7b
-**/*.cer
-**/*.profile
+harmony/**/*.hap
+harmony/**/*.app
+harmony/**/*.p12
+harmony/**/*.p7b
+harmony/**/*.cer
+harmony/**/*.profile
+harmony/**/*.pem
+harmony/**/*.key
+harmony/**/*.jks
+harmony/**/*.keystore
