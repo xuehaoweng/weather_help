@@ -252,6 +252,6 @@ test('HarmonyOS app URL policy only trusts the configured HTTPS origin', () => {
   assert.doesNotMatch(appConfig, /http:\/\/43\.129\.249\.56/);
   assert.doesNotMatch(
     appConfig,
-    /sslError|handleConfirm|ignoreSsl/,
+    /sslError|handleConfirm|ignoreSsl/i,
   );
 });
