@@ -30,7 +30,7 @@
 - 修改：`server/qweather-client.test.js`
 - 修改：`server/qweather-client.js`
 
-- [ ] **步骤 1：编写失败的重试测试**
+- [x] **步骤 1：编写失败的重试测试**
 
 在 `server/qweather-client.test.js` 增加：
 
@@ -72,7 +72,7 @@ test("does not retry invalid upstream payloads", async (t) => {
 });
 ```
 
-- [ ] **步骤 2：运行测试验证失败**
+- [x] **步骤 2：运行测试验证失败**
 
 运行：
 
@@ -82,7 +82,7 @@ node --test server/qweather-client.test.js
 
 预期：新增重试测试失败，因为第一次网络错误仍直接抛出。
 
-- [ ] **步骤 3：实现最少重试逻辑**
+- [x] **步骤 3：实现最少重试逻辑**
 
 在 `createQWeatherClient` 中接收 `sleepImpl`，并让 `fetchAndCache` 对 `UPSTREAM_TIMEOUT`、`UPSTREAM_NETWORK_ERROR` 最多额外尝试两次：
 
@@ -104,7 +104,7 @@ async function fetchWithRetry(url) {
 
 保持单次请求的超时控制在 `fetchOnce` 内，避免一个已触发的计时器跨越多次尝试。
 
-- [ ] **步骤 4：运行测试验证通过**
+- [x] **步骤 4：运行测试验证通过**
 
 运行：
 
@@ -114,7 +114,7 @@ node --test server/qweather-client.test.js
 
 预期：全部通过。
 
-- [ ] **步骤 5：提交**
+- [x] **步骤 5：提交**
 
 ```bash
 git add server/qweather-client.js server/qweather-client.test.js
@@ -129,7 +129,7 @@ git commit -m "fix: retry transient weather network failures"
 - 修改：`server/weather-service.test.js`
 - 修改：`server/weather-service.js`
 
-- [ ] **步骤 1：编写失败的缓存与服务测试**
+- [x] **步骤 1：编写失败的缓存与服务测试**
 
 增加客户端测试：
 
@@ -160,7 +160,7 @@ test("returns marked stale data inside stale-if-error window", async (t) => {
 
 增加超过窗口仍抛错的测试，以及 `weather-service.test.js` 中实时天气 stale 时 `body.staleSources` 等于 `["now"]`、预警失败不进入 staleSources 的测试。
 
-- [ ] **步骤 2：运行测试验证失败**
+- [x] **步骤 2：运行测试验证失败**
 
 运行：
 
@@ -170,7 +170,7 @@ node --test server/qweather-client.test.js server/weather-service.test.js
 
 预期：因 `staleIfErrorMs` 和 `isStaleWeatherData` 尚未实现而失败。
 
-- [ ] **步骤 3：实现缓存标记和服务传播**
+- [x] **步骤 3：实现缓存标记和服务传播**
 
 在客户端导出 Symbol 检测函数：
 
@@ -197,7 +197,7 @@ body.staleSources = [];
 if (isStaleWeatherData(result.value)) body.staleSources.push(source);
 ```
 
-- [ ] **步骤 4：运行测试验证通过**
+- [x] **步骤 4：运行测试验证通过**
 
 运行：
 
@@ -207,7 +207,7 @@ node --test server/qweather-client.test.js server/weather-service.test.js
 
 预期：全部通过。
 
-- [ ] **步骤 5：提交**
+- [x] **步骤 5：提交**
 
 ```bash
 git add server/qweather-client.js server/qweather-client.test.js server/weather-service.js server/weather-service.test.js
@@ -225,7 +225,7 @@ git commit -m "fix: serve recent weather cache during outages"
 - 修改：`shared/advice-engine.js`
 - 修改：`shared/advice-engine.test.js`
 
-- [ ] **步骤 1：编写失败的渲染和建议测试**
+- [x] **步骤 1：编写失败的渲染和建议测试**
 
 在组件测试中渲染缺失状态：
 
@@ -249,7 +249,7 @@ test("missing current temperature is not treated as zero degrees", () => {
 });
 ```
 
-- [ ] **步骤 2：运行测试验证失败**
+- [x] **步骤 2：运行测试验证失败**
 
 运行：
 
@@ -259,7 +259,7 @@ node --test src/components/components.test.js shared/advice-engine.test.js
 
 预期：`CurrentConditions` 不存在，且缺失温度仍产生低温扣分。
 
-- [ ] **步骤 3：实现最小前端组件与计算修复**
+- [x] **步骤 3：实现最小前端组件与计算修复**
 
 创建 `CurrentConditions`：
 
@@ -290,7 +290,7 @@ function optionalNumber(value) {
 
 只将 `temp` 改为 `optionalNumber(now.temp)`，降雨和风速继续使用零作为缺失兜底。
 
-- [ ] **步骤 4：运行聚焦测试验证通过**
+- [x] **步骤 4：运行聚焦测试验证通过**
 
 运行：
 
@@ -300,7 +300,7 @@ node --test src/components/components.test.js shared/advice-engine.test.js
 
 预期：全部通过，输出中没有 React 警告。
 
-- [ ] **步骤 5：提交**
+- [x] **步骤 5：提交**
 
 ```bash
 git add src/components/CurrentConditions.js src/components/components.test.js src/components/MobileSummary.js src/main.jsx src/styles.css shared/advice-engine.js shared/advice-engine.test.js
@@ -312,7 +312,7 @@ git commit -m "fix: show usable weather fallback states"
 **文件：**
 - 修改：`docs/superpowers/plans/2026-07-16-weather-resilience.md`
 
-- [ ] **步骤 1：运行全量测试**
+- [x] **步骤 1：运行全量测试**
 
 ```bash
 npm test
@@ -320,7 +320,7 @@ npm test
 
 预期：全部测试通过。
 
-- [ ] **步骤 2：运行生产构建与格式检查**
+- [x] **步骤 2：运行生产构建与格式检查**
 
 ```bash
 npm run build
@@ -329,11 +329,11 @@ git diff --check
 
 预期：Vite 构建成功；格式检查无输出。
 
-- [ ] **步骤 3：部署到服务器**
+- [x] **步骤 3：部署到服务器**
 
 将最新 `main` 发布到新的 `/opt/weather-pro/releases/<timestamp>-<commit>`，复用 `/opt/weather-pro/shared/.env`，切换 `/opt/weather-pro/current` 后重启 `weather-pro`，不要改动 Nginx 和证书配置。
 
-- [ ] **步骤 4：线上故障场景验证**
+- [x] **步骤 4：线上故障场景验证**
 
 正常验证：
 
@@ -344,7 +344,7 @@ curl -fsS 'https://43.129.249.56/api/weather?location=101010100'
 
 浏览器验证：首页不出现 `0°`、裸温度单位或空湿度/能见度，正常数据仍显示。
 
-- [ ] **步骤 5：更新计划并提交**
+- [x] **步骤 5：更新计划并提交**
 
 只勾选已经完成且有命令证据的步骤：
 
