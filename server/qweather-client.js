@@ -3,6 +3,7 @@ import path from "node:path";
 
 const CACHE_SCHEMA_VERSION = 1;
 const DEFAULT_TIMEOUT_MS = 4000;
+const RETRY_DELAYS_MS = [150, 400];
 
 export class QWeatherError extends Error {
   constructor(code, message, cause) {
@@ -25,6 +26,7 @@ export function createQWeatherClient(options = {}) {
     fsImpl = fs
   } = options;
   const timeoutMs = normalizeTimeout(options.timeoutMs);
+  const sleep = options.sleepImpl || ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));
   const memory = new Map();
   const inflight = new Map();
   let version = 0;
@@ -52,6 +54,25 @@ export function createQWeatherClient(options = {}) {
   }
 
   async function fetchAndCache(url) {
+    const data = await fetchWithRetry(url);
+    memory.set(url, { cachedAt: now(), data });
+    version += 1;
+    schedulePersist();
+    return data;
+  }
+
+  async function fetchWithRetry(url) {
+    for (let attempt = 0; ; attempt += 1) {
+      try {
+        return await fetchOnce(url);
+      } catch (error) {
+        if (!isRecoverable(error) || attempt >= RETRY_DELAYS_MS.length) throw error;
+        await sleep(RETRY_DELAYS_MS[attempt]);
+      }
+    }
+  }
+
+  async function fetchOnce(url) {
     const controller = new AbortController();
     let timer;
     const timeout = new Promise((_, reject) => {
@@ -62,11 +83,7 @@ export function createQWeatherClient(options = {}) {
     });
 
     try {
-      const data = await Promise.race([readResponse(url, controller.signal), timeout]);
-      memory.set(url, { cachedAt: now(), data });
-      version += 1;
-      schedulePersist();
-      return data;
+      return await Promise.race([readResponse(url, controller.signal), timeout]);
     } finally {
       clearTimeoutImpl(timer);
     }
@@ -187,6 +204,13 @@ export function createQWeatherClient(options = {}) {
 function normalizeTimeout(value) {
   const parsed = Number(value);
   return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : DEFAULT_TIMEOUT_MS;
+}
+
+function isRecoverable(error) {
+  return error instanceof QWeatherError && (
+    error.code === "UPSTREAM_TIMEOUT" ||
+    error.code === "UPSTREAM_NETWORK_ERROR"
+  );
 }
 
 function buildUrl(host, endpoint, params) {

@@ -35,22 +35,63 @@ test("deduplicates concurrent requests", async (t) => {
   await client.close();
 });
 
+test("retries recoverable network errors twice before succeeding", async (t) => {
+  const cachePath = await temporaryCache(t);
+  let calls = 0;
+  const client = createQWeatherClient({
+    apiKey: "secret",
+    cachePath,
+    sleepImpl: async () => {},
+    fetchImpl: async () => {
+      calls += 1;
+      if (calls < 3) throw new Error("offline");
+      return jsonResponse({ code: "200", marker: "recovered" });
+    }
+  });
+
+  assert.equal((await client.request(spec)).marker, "recovered");
+  assert.equal(calls, 3);
+  await client.close();
+});
+
+test("does not retry invalid upstream payloads", async (t) => {
+  const cachePath = await temporaryCache(t);
+  let calls = 0;
+  const client = createQWeatherClient({
+    apiKey: "secret",
+    cachePath,
+    sleepImpl: async () => {},
+    fetchImpl: async () => {
+      calls += 1;
+      return jsonResponse({ code: "401" });
+    }
+  });
+
+  await assert.rejects(
+    client.request(spec),
+    (error) => error instanceof QWeatherError && error.code === "UPSTREAM_INVALID_RESPONSE"
+  );
+  assert.equal(calls, 1);
+  await client.close();
+});
+
 test("clears a rejected inflight request so the next call retries", async (t) => {
   const cachePath = await temporaryCache(t);
   let calls = 0;
   const client = createQWeatherClient({
     apiKey: "secret",
     cachePath,
+    sleepImpl: async () => {},
     fetchImpl: async () => {
       calls += 1;
-      if (calls === 1) throw new Error("offline");
+      if (calls <= 3) throw new Error("offline");
       return jsonResponse({ code: "200", marker: "retried" });
     }
   });
 
   await assert.rejects(client.request(spec), (error) => error instanceof QWeatherError && error.code === "UPSTREAM_NETWORK_ERROR");
   assert.equal((await client.request(spec)).marker, "retried");
-  assert.equal(calls, 2);
+  assert.equal(calls, 4);
   await client.close();
 });
 
@@ -61,16 +102,17 @@ test("times out while reading the response body and retries later", async (t) =>
     apiKey: "secret",
     cachePath,
     timeoutMs: 15,
+    sleepImpl: async () => {},
     fetchImpl: async () => {
       calls += 1;
-      if (calls === 1) return { ok: true, json: () => new Promise(() => {}) };
+      if (calls <= 3) return { ok: true, json: () => new Promise(() => {}) };
       return jsonResponse({ code: "200", marker: "after-timeout" });
     }
   });
 
   await assert.rejects(client.request(spec), (error) => error instanceof QWeatherError && error.code === "UPSTREAM_TIMEOUT");
   assert.equal((await client.request(spec)).marker, "after-timeout");
-  assert.equal(calls, 2);
+  assert.equal(calls, 4);
   await client.close();
 });
 
