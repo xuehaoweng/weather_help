@@ -2,8 +2,6 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
   Bell,
-  Bike,
-  BriefcaseBusiness,
   CalendarClock,
   Check,
   Cloud,
@@ -12,17 +10,20 @@ import {
   CloudRain,
   CloudSnow,
   CloudSun,
-  Crown,
-  LocateFixed,
-  MapPin,
-  Search,
   ShieldAlert,
-  Sparkles,
   Sun,
   Umbrella,
   Wind
 } from "lucide-react";
 import { WeatherEffects } from "./WeatherEffects.jsx";
+import { LocationPicker } from "./components/LocationPicker.js";
+import { MobileSummary } from "./components/MobileSummary.js";
+import { ReminderSettings } from "./components/ReminderSettings.js";
+import { ScenarioPanel } from "./components/ScenarioPanel.js";
+import { ScoreDetails } from "./components/ScoreDetails.js";
+import { addFavorite, loadFavorites, removeFavorite } from "./favorite-locations.js";
+import { checkAndNotify } from "./reminder-notifier.js";
+import { loadReminder, saveReminder } from "./reminder-store.js";
 import { resolveWeatherScene } from "./weather-effects.js";
 import { createLatestWeatherLoader, mergeWeatherData } from "./weather-loader.js";
 import "./styles.css";
@@ -49,6 +50,15 @@ function App() {
   const [detailsError, setDetailsError] = useState("");
   const [searchError, setSearchError] = useState("");
   const [mode, setMode] = useState("commute");
+  const [favorites, setFavorites] = useState(() => loadFavorites());
+  const [favoriteError, setFavoriteError] = useState("");
+  const [locating, setLocating] = useState(false);
+  const [reminder, setReminder] = useState(() => loadReminder());
+  const [reminderDraft, setReminderDraft] = useState(() => loadReminder());
+  const [reminderOpen, setReminderOpen] = useState(false);
+  const [notificationPermission, setNotificationPermission] = useState(() => globalThis.Notification?.permission || "unsupported");
+  const [inPageAlert, setInPageAlert] = useState("");
+  const [reloadKey, setReloadKey] = useState(0);
   const weatherLoader = useRef(null);
 
   if (!weatherLoader.current) weatherLoader.current = createLatestWeatherLoader();
@@ -79,16 +89,23 @@ function App() {
       onDetailsError: (error) => {
         setDetailsError(error.message);
         setDetailsStatus("error");
+        setWeather((current) => current ? {
+          ...current,
+          insight: { ...current.insight, isPartial: true }
+        } : current);
       }
     });
     return () => weatherLoader.current.cancel();
-  }, [location.id, location.lon, location.lat]);
+  }, [location.id, location.lon, location.lat, reloadKey]);
 
   async function searchLocations(event) {
     event.preventDefault();
     const keyword = query.trim();
     if (!keyword) return;
+    await findLocations(keyword);
+  }
 
+  async function findLocations(keyword) {
     setSearching(true);
     setSearchError("");
     try {
@@ -104,19 +121,160 @@ function App() {
     }
   }
 
+  function selectLocation(item) {
+    setLocation(item);
+    setSearchResults([]);
+    setQuery(item.name);
+    setSearchError("");
+    setFavoriteError("");
+  }
+
+  async function useCurrentLocation() {
+    if (!navigator.geolocation) {
+      setSearchError("当前浏览器不支持定位，请手动搜索城市。");
+      return;
+    }
+    setLocating(true);
+    setSearchError("");
+    try {
+      const position = await new Promise((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: false,
+          timeout: 8000,
+          maximumAge: 10 * 60 * 1000
+        });
+      });
+      const keyword = `${position.coords.longitude},${position.coords.latitude}`;
+      const response = await fetch(`/api/locations?q=${encodeURIComponent(keyword)}`);
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error?.message || "当前位置查询失败");
+      if (!data.locations?.[0]) throw new Error("没有找到当前位置附近的天气城市");
+      selectLocation(data.locations[0]);
+    } catch (error) {
+      const denied = error?.code === 1;
+      setSearchError(denied ? "定位权限已拒绝，你仍可以手动搜索城市。" : error.message || "定位失败，请稍后重试。");
+    } finally {
+      setLocating(false);
+    }
+  }
+
+  function addCurrentFavorite() {
+    try {
+      setFavorites(addFavorite(globalThis.localStorage, location));
+      setFavoriteError("");
+    } catch (error) {
+      setFavoriteError(error.message);
+    }
+  }
+
+  function removeCurrentFavorite(locationId) {
+    setFavorites(removeFavorite(globalThis.localStorage, locationId));
+    setFavoriteError("");
+  }
+
+  function openReminderSettings() {
+    setReminderDraft({
+      ...reminder,
+      location: reminder.location || location
+    });
+    setReminderOpen(true);
+  }
+
+  async function requestNotificationPermission() {
+    if (!globalThis.Notification) {
+      setNotificationPermission("unsupported");
+      return;
+    }
+    const permission = await globalThis.Notification.requestPermission();
+    setNotificationPermission(permission);
+  }
+
+  function saveReminderSettings() {
+    const saved = saveReminder(globalThis.localStorage, {
+      ...reminderDraft,
+      enabled: true,
+      location: reminderDraft.location || location
+    });
+    setReminder(saved);
+    setReminderDraft(saved);
+    setReminderOpen(false);
+    setInPageAlert(notificationPermission === "granted"
+      ? `已开启 ${saved.location.name} 的本机雨前提醒。`
+      : "已开启页面内雨前提示；浏览器通知未授权。");
+  }
+
+  function disableReminder() {
+    const saved = saveReminder(globalThis.localStorage, { ...reminder, enabled: false });
+    setReminder(saved);
+    setReminderDraft(saved);
+    setReminderOpen(false);
+    setInPageAlert("雨前提醒已关闭。");
+  }
+
   const now = weather?.now?.now;
   const weatherKind = useMemo(() => resolveWeatherScene(now, weatherStatus).kind, [now, weatherStatus]);
   const daily = weather?.daily?.daily || [];
   const hourly = weather?.hourly?.hourly || [];
   const minutely = weather?.minutely?.minutely || [];
   const warnings = weather?.warning?.warning || [];
-  const indices = weather?.indices?.daily || [];
-
   const upcomingRain = useMemo(() => {
-    const first = minutely.find((item) => Number(item.precip) > 0);
-    if (!first) return null;
-    return new Date(first.fxTime).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" });
-  }, [minutely]);
+    const value = weather?.insight?.firstRainAt;
+    return value ? timeLabel(value) : null;
+  }, [weather?.insight?.firstRainAt]);
+  const rainText = detailsStatus === "loading"
+    ? "分析中"
+    : detailsStatus === "error"
+      ? "暂不可用"
+      : upcomingRain
+        ? `${upcomingRain} 起`
+        : "两小时内暂无";
+  const activeScenario = weather?.insight?.scenarios?.[mode];
+
+  useEffect(() => {
+    if (!reminder.enabled || !reminder.location) return undefined;
+    const run = async () => {
+      let reminderWeather = reminder.location.id === location.id ? weather : null;
+      if (!reminderWeather?.minutely) {
+        try {
+          const params = new URLSearchParams({
+            full: "true",
+            location: reminder.location.id,
+            lon: reminder.location.lon,
+            lat: reminder.location.lat
+          });
+          const response = await fetch(`/api/weather?${params}`);
+          if (response.ok) reminderWeather = await response.json();
+        } catch {
+          return;
+        }
+      }
+      if (!reminderWeather?.insight) return;
+      const result = checkAndNotify({
+        config: reminder,
+        insight: reminderWeather.insight,
+        location: reminder.location,
+        weatherText: reminderWeather.now?.now?.text,
+        NotificationImpl: globalThis.Notification
+      });
+      if (!result.shouldNotify) return;
+      if (result.inPage) setInPageAlert(result.message);
+      const next = saveReminder(globalThis.localStorage, {
+        ...reminder,
+        lastNotificationKey: result.notificationKey
+      });
+      setReminder(next);
+    };
+    run();
+    const timer = window.setInterval(run, 5 * 60 * 1000);
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") run();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [reminder, weather, location.id]);
 
   return (
     <>
@@ -127,52 +285,43 @@ function App() {
           <span className="brand-mark"><CloudRain size={20} /></span>
           <span>出门天气助手</span>
         </div>
-        <button className="ghost-button" type="button">
+        <button className={`ghost-button ${reminder.enabled ? "active" : ""}`} type="button" onClick={openReminderSettings}>
           <Bell size={17} />
-          雨前提醒
+          {reminder.enabled ? "提醒已开启" : "雨前提醒"}
         </button>
       </section>
 
+      {inPageAlert && (
+        <div className="notice-banner" role="status">
+          <span>{inPageAlert}</span>
+          <button type="button" onClick={() => setInPageAlert("")}>知道了</button>
+        </div>
+      )}
+
       <section className="hero">
         <div className="hero-copy">
-          <form className="search" onSubmit={searchLocations}>
-            <Search size={18} />
-            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索城市、区县" />
-            <button type="submit" disabled={searching}>{searching ? "搜索中" : "搜索"}</button>
-          </form>
+          <LocationPicker
+            query={query}
+            results={searchResults}
+            searching={searching}
+            locating={locating}
+            error={searchError || favoriteError}
+            location={location}
+            favorites={favorites}
+            onQueryChange={setQuery}
+            onSearch={searchLocations}
+            onSelect={selectLocation}
+            onUseCurrentLocation={useCurrentLocation}
+            onAddFavorite={addCurrentFavorite}
+            onRemoveFavorite={removeCurrentFavorite}
+          />
 
-          {searchResults.length > 0 && (
-            <div className="search-results">
-              {searchResults.map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => {
-                    setLocation(item);
-                    setSearchResults([]);
-                    setQuery(item.name);
-                    setSearchError("");
-                  }}
-                >
-                  <MapPin size={15} />
-                  <span>{item.name}</span>
-                  <small>{item.adm1} {item.adm2}</small>
-                </button>
-              ))}
-            </div>
-          )}
-
-          {searchError && <p className="search-error" role="alert">{searchError}</p>}
-
-          <div className="location-line">
-            <LocateFixed size={17} />
-            {location.name} · {location.adm1}
-          </div>
-
-          <h1>{weather?.insight?.title || "正在生成出门建议"}</h1>
+          <h1>{activeScenario?.headline || weather?.insight?.title || "正在生成出门建议"}</h1>
           <p className="hero-subtitle">
-            把实时天气、分钟降雨、预警和生活指数合成一句能行动的建议。免费查天气，付费买多地点提醒和场景决策。
+            {activeScenario?.summary || "把实时天气、分钟降雨、预警和生活指数合成一句能行动的建议。"}
           </p>
+
+          <MobileSummary now={now} insight={weather?.insight} rainText={rainText} />
 
           <div className="mode-tabs" aria-label="场景">
             {[
@@ -180,7 +329,13 @@ function App() {
               ["outdoor", Bike, "户外"],
               ["family", Sun, "家庭"]
             ].map(([key, Icon, label]) => (
-              <button key={key} className={mode === key ? "active" : ""} type="button" onClick={() => setMode(key)}>
+              <button
+                key={key}
+                className={mode === key ? "active" : ""}
+                type="button"
+                aria-pressed={mode === key}
+                onClick={() => setMode(key)}
+              >
                 <Icon size={16} />
                 {label}
               </button>
@@ -197,21 +352,31 @@ function App() {
           upcomingRain={upcomingRain}
           warnings={warnings}
           detailsStatus={detailsStatus}
+          onRetry={() => setReloadKey((value) => value + 1)}
         />
       </section>
 
       <section className="content-grid">
         <RainTimeline minutely={minutely} summary={weather?.insight?.rainSummary} status={detailsStatus} error={detailsError} />
         <Forecast daily={daily} hourly={hourly} loading={loading} />
-        <Scenario mode={mode} now={now} daily={daily} indices={indices} loading={loading} detailsStatus={detailsStatus} detailsError={detailsError} />
-        <Premium />
+        <ScenarioPanel scenario={activeScenario} loading={loading} />
       </section>
       </main>
+      <ReminderSettings
+        open={reminderOpen}
+        config={reminderDraft}
+        permission={notificationPermission}
+        onChange={setReminderDraft}
+        onRequestPermission={requestNotificationPermission}
+        onSave={saveReminderSettings}
+        onDisable={disableReminder}
+        onClose={() => setReminderOpen(false)}
+      />
     </>
   );
 }
 
-function WeatherPanel({ loading, error, now, weatherKind, insight, upcomingRain, warnings, detailsStatus }) {
+function WeatherPanel({ loading, error, now, weatherKind, insight, upcomingRain, warnings, detailsStatus, onRetry }) {
   if (loading) {
     return (
       <aside className="weather-panel loading-panel" aria-busy="true" aria-live="polite">
@@ -262,6 +427,7 @@ function WeatherPanel({ loading, error, now, weatherKind, insight, upcomingRain,
         <ShieldAlert size={30} />
         <h2>数据暂不可用</h2>
         <p>{error}</p>
+        <button type="button" onClick={onRetry}>重新加载</button>
       </aside>
     );
   }
@@ -299,10 +465,16 @@ function WeatherPanel({ loading, error, now, weatherKind, insight, upcomingRain,
       <div className="score-card">
         <div>
           <small>出门评分</small>
-          <strong>{insight?.commuteScore?.value || "--"}</strong>
+          <strong>{insight?.score?.value || insight?.commuteScore?.value || "--"}</strong>
         </div>
-        <span>{insight?.commuteScore?.label || "计算中"}</span>
+        <span>{insight?.score?.label || insight?.commuteScore?.label || "计算中"}</span>
       </div>
+      <ScoreDetails
+        score={insight?.score || insight?.commuteScore}
+        source={insight?.source}
+        updatedAt={insight?.updatedAt}
+        isPartial={insight?.isPartial}
+      />
 
       <div className="quick-facts">
         <Fact
@@ -424,79 +596,6 @@ function Forecast({ daily, hourly, loading }) {
           </div>
         ))}
       </div>}
-    </section>
-  );
-}
-
-function Scenario({ mode, now, daily, indices, loading, detailsStatus, detailsError }) {
-  const copy = {
-    commute: ["通勤提醒", "雨前 20 分钟提醒、上班前风险卡片、晚高峰二次提醒。", BriefcaseBusiness],
-    outdoor: ["户外窗口", "结合降雨、风速、紫外线和体感温度，推荐适合跑步/骑行/露营的时段。", Bike],
-    family: ["家庭健康", "老人、小孩、过敏人群可关注空气、紫外线、感冒和穿衣指数。", Sun]
-  }[mode];
-  const Icon = copy[2];
-
-  return (
-    <section className="surface">
-      <div className="section-heading">
-        <div>
-          <h2>{copy[0]}</h2>
-          <p>{copy[1]}</p>
-        </div>
-        <Icon size={22} />
-      </div>
-      <div className="decision-list">
-        {loading ? (
-          [0, 1, 2].map((item) => <div className="decision loading-decision" key={item}><span /><div /></div>)
-        ) : (
-          <>
-            <Decision ok label="现在出门" value={`${now?.text || "--"} · 体感 ${now?.feelsLike || "--"}°`} />
-            <Decision ok={Number(daily[0]?.uvIndex || 0) < 8} label="防晒风险" value={`UV ${daily[0]?.uvIndex || "--"}`} />
-            {detailsStatus === "loading" ? (
-              <div className="decision loading-decision" aria-label="生活指数分析中"><span /><div /></div>
-            ) : (
-              <Decision
-                ok={detailsStatus === "success" && indices.length > 0}
-                label="指数数据"
-                value={detailsStatus === "error" ? detailsError || "详情暂不可用" : indices[0]?.category || "暂未返回"}
-              />
-            )}
-          </>
-        )}
-      </div>
-    </section>
-  );
-}
-
-function Decision({ ok, label, value }) {
-  return (
-    <div className="decision">
-      <span className={ok ? "ok" : "warn"}>{ok ? <Check size={15} /> : <ShieldAlert size={15} />}</span>
-      <div>
-        <strong>{label}</strong>
-        <small>{value}</small>
-      </div>
-    </div>
-  );
-}
-
-function Premium() {
-  return (
-    <section className="surface premium">
-      <div className="section-heading">
-        <div>
-          <h2>可付费功能</h2>
-          <p>适合做会员墙，不影响免费天气查询。</p>
-        </div>
-        <Crown size={22} />
-      </div>
-      <div className="price">¥39 <span>/ 年起</span></div>
-      <ul>
-        <li><Sparkles size={16} /> 10 个常用地点与家庭共享</li>
-        <li><Sparkles size={16} /> 上班、放学、跑步、钓鱼提醒模板</li>
-        <li><Sparkles size={16} /> 周末户外活动窗口和无广告体验</li>
-      </ul>
-      <button type="button">开通提醒会员</button>
     </section>
   );
 }
