@@ -1,6 +1,9 @@
 {
   name: 'entry',
   version: '0.1.0',
+  description: 'Weather Pro entry HAP',
+  main: '',
+  author: 'xuehaoweng',
   license: 'MIT',
   dependencies: {},
 }

@@ -1,5 +1,6 @@
 {
   modelVersion: '5.0.5',
+  description: 'Weather Pro HarmonyOS shell',
   dependencies: {},
   devDependencies: {
     '@ohos/hvigor-ohos-plugin': '6.0.0',

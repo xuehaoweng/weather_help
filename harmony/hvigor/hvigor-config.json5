@@ -7,6 +7,10 @@
     daemon: true,
     incremental: true,
     parallel: true,
-    typeCheck: false,
+    typeCheck: true,
+    analyze: 'normal',
+  },
+  logging: {
+    level: 'info',
   },
 }
