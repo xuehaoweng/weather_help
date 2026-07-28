@@ -1,0 +1,31 @@
+sequenceDiagram
+  autonumber
+  participant UI as React UI
+  participant API as Express API
+  participant SVC as WeatherService
+  participant QW as QWeatherClient
+  participant ADV as AdviceEngine
+  participant EXT as QWeather
+
+  par 核心天气
+    UI->>API: GET /api/weather
+    API->>SVC: getCore(query)
+    SVC->>QW: 4 组并发 request()
+    QW->>EXT: HTTPS 请求（缓存未命中）
+    EXT-->>QW: 实时/日预报/小时/预警
+    QW-->>SVC: 数据或可用旧缓存
+    SVC->>ADV: buildWeatherInsight()
+    ADV-->>SVC: 初始出门建议
+    SVC-->>API: status + body
+    API-->>UI: 200 或 502
+  and 天气详情
+    UI->>API: GET /api/weather/details
+    API->>SVC: getDetails(query)
+    SVC->>QW: 2 组并发 request()
+    QW->>EXT: 分钟降雨/生活指数
+    EXT-->>QW: 详情数据
+    SVC-->>API: status + body
+    API-->>UI: 200 或 502
+  end
+  UI->>ADV: mergeWeatherData() 后重算建议
+

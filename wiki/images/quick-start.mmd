@@ -1,0 +1,20 @@
+graph TB
+  Clone["获取代码"]
+  Install["npm install"]
+  Env["复制 .env.example 为 .env"]
+  Mode{"数据模式"}
+  Mock["QWEATHER_MOCK=true"]
+  Real["配置 QWEATHER_API_KEY"]
+  Dev["npm run dev"]
+  API["Express :8787"]
+  Web["Vite :5177"]
+  Verify["访问 / 与 /api/health"]
+
+  Clone --> Install --> Env --> Mode
+  Mode --> Mock --> Dev
+  Mode --> Real --> Dev
+  Dev --> API
+  Dev --> Web
+  API --> Verify
+  Web --> Verify
+

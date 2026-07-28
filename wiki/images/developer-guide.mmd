@@ -1,0 +1,28 @@
+graph TB
+  Tests["node:test 测试"]
+  Entry["src/main.jsx"]
+  Components["src/components/*"]
+  ClientModules["加载 / 提醒 / 收藏 / 统计 / 天气效果"]
+  Shared["shared/advice-engine.js"]
+  ServerEntry["server/index.js"]
+  Routes["server/app.js"]
+  Service["server/weather-service.js"]
+  Infra["QWeather 客户端 / Mock / 认证 / 统计存储"]
+  Build["Vite 构建"]
+  Runtime["Express 生产托管"]
+
+  Entry --> Components
+  Entry --> ClientModules
+  ClientModules --> Shared
+  ServerEntry --> Routes --> Service
+  Service --> Shared
+  Service --> Infra
+  Tests -.约束.-> Components
+  Tests -.约束.-> ClientModules
+  Tests -.约束.-> Shared
+  Tests -.约束.-> Routes
+  Tests -.约束.-> Service
+  Tests -.约束.-> Infra
+  Entry --> Build --> Runtime
+  ServerEntry --> Runtime
+

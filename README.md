@@ -6,7 +6,7 @@
 
 聚合实时天气、分钟级降雨、天气预警和生活指数，为通勤、户外与家庭场景生成清晰的出门建议。
 
-[English](./README.en.md) · [快速开始](#-快速开始) · [部署指南](./docs/deployment.md) · [参与贡献](./CONTRIBUTING.md)
+[English](./README.en.md) · [快速开始](#-快速开始) · [项目 Wiki](./wiki/README.md) · [部署指南](./docs/deployment.md) · [参与贡献](./CONTRIBUTING.md)
 
 [![CI](https://github.com/xuehaoweng/weather_help/actions/workflows/ci.yml/badge.svg)](https://github.com/xuehaoweng/weather_help/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-2f6659.svg)](./LICENSE)
@@ -159,6 +159,7 @@ weather_help/
 ├── server/                 # Express API、天气服务、缓存与 Mock 数据
 ├── public/                 # 静态资源与产品截图
 ├── docs/                   # 配置和部署文档
+├── wiki/                   # 项目概述、快速入门、API 参考与开发者指南
 ├── .github/workflows/      # GitHub Actions CI
 ├── docker-compose.yml
 └── vite.config.js

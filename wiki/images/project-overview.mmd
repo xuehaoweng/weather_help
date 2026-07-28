@@ -1,0 +1,25 @@
+graph TB
+  Browser["浏览器 / React UI"]
+  BrowserAPI["浏览器能力<br/>定位 / 通知 / localStorage"]
+  Express["Express API 与 Handler"]
+  WeatherService["天气聚合服务"]
+  Advice["共享建议引擎"]
+  QClient["QWeather 客户端<br/>超时 / 重试 / 缓存"]
+  Mock["内置 Mock 数据"]
+  Analytics["匿名聚合统计"]
+  Admin["管理认证与仪表盘"]
+  Upstream["QWeather / GeoAPI"]
+  Disk[".cache 持久化"]
+
+  Browser --> Express
+  Browser --> BrowserAPI
+  Express --> WeatherService
+  WeatherService --> Advice
+  WeatherService --> QClient
+  WeatherService --> Mock
+  QClient --> Upstream
+  QClient --> Disk
+  Express --> Analytics
+  Analytics --> Disk
+  Express --> Admin
+

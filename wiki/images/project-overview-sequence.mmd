@@ -1,0 +1,31 @@
+sequenceDiagram
+  autonumber
+  participant U as 用户
+  participant UI as React App
+  participant API as Express
+  participant S as WeatherService
+  participant C as QWeatherClient
+  participant Q as QWeather
+  participant A as AdviceEngine
+
+  U->>UI: 选择地点
+  par 核心数据
+    UI->>API: GET /api/weather
+    API->>S: getCore(query)
+    S->>C: 并发请求 4 组数据
+    C->>Q: 缓存未命中时访问上游
+    Q-->>C: 天气数据
+    C-->>S: 新数据或标记后的旧缓存
+    S->>A: buildWeatherInsight(core)
+    A-->>S: 初始建议
+    S-->>UI: 核心天气
+  and 详情数据
+    UI->>API: GET /api/weather/details
+    API->>S: getDetails(query)
+    S->>C: 并发请求分钟降雨与指数
+    C->>Q: 访问上游
+    Q-->>C: 详情数据
+    S-->>UI: 详情天气
+  end
+  UI->>A: mergeWeatherData 后重算完整建议
+
